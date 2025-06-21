@@ -1,6 +1,26 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { dbConnect } from '@/lib/mongodb';
 import Recipe from '@/lib/models/Recipe';
+import Item from '@/lib/models/Item';
+
+// Utility function to get item image path
+function getItemImagePath(className: string): string {
+  if (!className) return '/images/items/default.svg';
+  
+  // Convert className to expected file format
+  // className format: "Desc_ItemName_C" -> "desc-itemname-c_64.png"
+  // Also handles: "BP_EquipmentDescriptorName_C" -> "bp-equipmentdescriptorname-c_64.png"
+  
+  const lowerClassName = className.toLowerCase();
+  
+  // Remove the trailing "_C" and convert underscores to hyphens
+  let imageName = lowerClassName.replace(/_c$/, '').replace(/_/g, '-');
+  
+  // Add the standard suffix
+  imageName += '-c_64.png';
+  
+  return `/images/items/${imageName}`;
+}
 
 export async function GET(request: NextRequest) {
   try {
@@ -47,20 +67,52 @@ export async function GET(request: NextRequest) {
     
     // Calculate skip for pagination
     const skip = (page - 1) * limit;
-    
-    // Get recipes with pagination
+      // Get recipes with pagination
     const recipes = await Recipe.find(query)
-      .select('className slug name alternate time ingredients products producedIn inMachine inHand')
+      .select('className slug name alternate time ingredients products producedIn inMachine inHand maxPower')
       .sort({ alternate: 1, name: 1 }) // Regular recipes first, then alternates
       .skip(skip)
       .limit(limit)
       .lean();
+
+    // Enrich recipes with ingredient and product names
+    const enrichedRecipes = await Promise.all(
+      recipes.map(async (recipe) => {        // Populate ingredient names and images
+        const enrichedIngredients = await Promise.all(
+          recipe.ingredients.map(async (ingredient: any) => {
+            const item = await Item.findOne({ className: ingredient.item }).lean() as any;
+            return {
+              ...ingredient,
+              name: item?.name || ingredient.item,
+              image: getItemImagePath(ingredient.item)
+            };
+          })
+        );
+
+        // Populate product names and images
+        const enrichedProducts = await Promise.all(
+          recipe.products.map(async (product: any) => {
+            const item = await Item.findOne({ className: product.item }).lean() as any;
+            return {
+              ...product,
+              name: item?.name || product.item,
+              image: getItemImagePath(product.item)
+            };
+          })
+        );
+
+        return {
+          ...recipe,
+          ingredients: enrichedIngredients,
+          products: enrichedProducts
+        };
+      })
+    );
     
     // Get total count for pagination
     const totalCount = await Recipe.countDocuments(query);
-    
-    return NextResponse.json({
-      recipes,
+      return NextResponse.json({
+      recipes: enrichedRecipes,
       pagination: {
         page,
         limit,

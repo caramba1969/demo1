@@ -1,6 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { getServerSession } from "next-auth/next";
+import { authOptions } from "@/app/api/auth/[...nextauth]/route";
 import { dbConnect } from '@/lib/mongodb';
 import ProductionLine from '@/lib/models/ProductionLine';
+import { Factory } from '@/lib/models/Factory';
 import Recipe, { IRecipe } from '@/lib/models/Recipe';
 import Item, { IItem } from '@/lib/models/Item';
 
@@ -82,9 +85,27 @@ export async function GET(
   { params }: { params: { id: string } }
 ) {
   try {
+    const session = await getServerSession(authOptions);
+    
+    if (!session) {
+      return NextResponse.json(
+        { error: "Authentication required" },
+        { status: 401 }
+      );
+    }
+
     await dbConnect();
     
     const { id: factoryId } = await params;
+    
+    // Verify the factory belongs to the authenticated user
+    const factory = await Factory.findOne({ _id: factoryId, userId: session.user?.id });
+    if (!factory) {
+      return NextResponse.json(
+        { error: "Factory not found or access denied" },
+        { status: 403 }
+      );
+    }
     
     // Get production lines for this factory
     const productionLines = await ProductionLine.find({ factoryId })
@@ -113,10 +134,28 @@ export async function POST(
   { params }: { params: { id: string } }
 ) {
   try {
+    const session = await getServerSession(authOptions);
+    
+    if (!session) {
+      return NextResponse.json(
+        { error: "Authentication required" },
+        { status: 401 }
+      );
+    }
+
     await dbConnect();
     
     const { id: factoryId } = await params;
     const body = await request.json();
+    
+    // Verify the factory belongs to the authenticated user
+    const factory = await Factory.findOne({ _id: factoryId, userId: session.user?.id });
+    if (!factory) {
+      return NextResponse.json(
+        { error: "Factory not found or access denied" },
+        { status: 403 }
+      );
+    }
     
     // Validate that the item and recipe exist
     const [item, recipe] = await Promise.all([

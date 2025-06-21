@@ -1,6 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { getServerSession } from "next-auth/next";
+import { authOptions } from "@/app/api/auth/[...nextauth]/route";
 import { dbConnect } from '@/lib/mongodb';
 import ProductionLine from '@/lib/models/ProductionLine';
+import { Factory } from '@/lib/models/Factory';
 import Recipe, { IRecipe } from '@/lib/models/Recipe';
 import Item, { IItem } from '@/lib/models/Item';
 
@@ -56,15 +59,38 @@ async function calculateProductionMetrics(productionLine: any) {
 
 export async function GET(request: NextRequest) {
   try {
+    const session = await getServerSession(authOptions);
+    
+    if (!session) {
+      return NextResponse.json(
+        { error: "Authentication required" },
+        { status: 401 }
+      );
+    }
+
     await dbConnect();
     
     const { searchParams } = new URL(request.url);
     const factoryId = searchParams.get('factoryId');
     const active = searchParams.get('active');
     
-    let query: any = {};
+    // First, get user's factories to ensure they only see their production lines
+    const userFactories = await Factory.find({ userId: session.user?.id }).select('_id');
+    const userFactoryIds = userFactories.map(f => f._id);
+    
+    let query: any = {
+      factoryId: { $in: userFactoryIds }
+    };
     
     if (factoryId) {
+      // Verify this factory belongs to the user
+      const factory = await Factory.findOne({ _id: factoryId, userId: session.user?.id });
+      if (!factory) {
+        return NextResponse.json(
+          { error: "Factory not found or access denied" },
+          { status: 403 }
+        );
+      }
       query.factoryId = factoryId;
     }
     
@@ -96,9 +122,29 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
+    const session = await getServerSession(authOptions);
+    
+    if (!session) {
+      return NextResponse.json(
+        { error: "Authentication required" },
+        { status: 401 }
+      );
+    }
+
     await dbConnect();
     
     const body = await request.json();
+    
+    // Verify the factory belongs to the authenticated user
+    if (body.factoryId) {
+      const factory = await Factory.findOne({ _id: body.factoryId, userId: session.user?.id });
+      if (!factory) {
+        return NextResponse.json(
+          { error: "Factory not found or access denied" },
+          { status: 403 }
+        );
+      }
+    }
     
     // Validate that the item and recipe exist
     const [item, recipe] = await Promise.all([

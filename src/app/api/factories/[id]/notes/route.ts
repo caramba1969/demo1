@@ -1,4 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
+import { getServerSession } from "next-auth/next";
+import { authOptions } from "@/app/api/auth/[...nextauth]/route";
 import { dbConnect } from "@/lib/mongodb";
 import { Factory } from "@/lib/models/Factory";
 
@@ -6,6 +8,15 @@ export async function POST(
   req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
+  const session = await getServerSession(authOptions);
+  
+  if (!session) {
+    return NextResponse.json(
+      { error: "Authentication required" },
+      { status: 401 }
+    );
+  }
+
   await dbConnect();
   const { text } = await req.json();
   const { id } = await params;
@@ -19,8 +30,8 @@ export async function POST(
 
   try {
     const noteId = Date.now().toString();
-    const factory = await Factory.findByIdAndUpdate(
-      id,
+    const factory = await Factory.findOneAndUpdate(
+      { _id: id, userId: session.user?.id },
       {
         $push: {
           notes: {
@@ -35,7 +46,7 @@ export async function POST(
 
     if (!factory) {
       return NextResponse.json(
-        { error: "Factory not found" },
+        { error: "Factory not found or access denied" },
         { status: 404 }
       );
     }
@@ -55,13 +66,22 @@ export async function DELETE(
   req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
+  const session = await getServerSession(authOptions);
+  
+  if (!session) {
+    return NextResponse.json(
+      { error: "Authentication required" },
+      { status: 401 }
+    );
+  }
+
   await dbConnect();
   const { noteId } = await req.json();
   const { id } = await params;
 
   try {
-    const factory = await Factory.findByIdAndUpdate(
-      id,
+    const factory = await Factory.findOneAndUpdate(
+      { _id: id, userId: session.user?.id },
       {
         $pull: {
           notes: { id: noteId }
@@ -72,7 +92,7 @@ export async function DELETE(
 
     if (!factory) {
       return NextResponse.json(
-        { error: "Factory not found" },
+        { error: "Factory not found or access denied" },
         { status: 404 }
       );
     }

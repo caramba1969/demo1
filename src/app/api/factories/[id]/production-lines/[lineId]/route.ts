@@ -1,6 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { getServerSession } from "next-auth/next";
+import { authOptions } from "@/app/api/auth/[...nextauth]/route";
 import { dbConnect } from '@/lib/mongodb';
 import ProductionLine from '@/lib/models/ProductionLine';
+import { Factory } from '@/lib/models/Factory';
 import Recipe, { IRecipe } from '@/lib/models/Recipe';
 import Item, { IItem } from '@/lib/models/Item';
 
@@ -59,21 +62,39 @@ export async function PATCH(
   { params }: { params: { id: string; lineId: string } }
 ) {
   try {
+    const session = await getServerSession(authOptions);
+    
+    if (!session) {
+      return NextResponse.json(
+        { error: "Authentication required" },
+        { status: 401 }
+      );
+    }
+
     await dbConnect();
     
-    const { lineId } = await params;
+    const { id: factoryId, lineId } = await params;
     const body = await request.json();
     
-    // Update production line
-    const productionLine = await ProductionLine.findByIdAndUpdate(
-      lineId,
+    // Verify the factory belongs to the authenticated user
+    const factory = await Factory.findOne({ _id: factoryId, userId: session.user?.id });
+    if (!factory) {
+      return NextResponse.json(
+        { error: "Factory not found or access denied" },
+        { status: 403 }
+      );
+    }
+    
+    // Update production line, but only if it belongs to the user's factory
+    const productionLine = await ProductionLine.findOneAndUpdate(
+      { _id: lineId, factoryId },
       body,
       { new: true }
     );
     
     if (!productionLine) {
       return NextResponse.json(
-        { error: 'Production line not found' },
+        { error: 'Production line not found or access denied' },
         { status: 404 }
       );
     }
@@ -97,16 +118,37 @@ export async function DELETE(
   { params }: { params: { id: string; lineId: string } }
 ) {
   try {
+    const session = await getServerSession(authOptions);
+    
+    if (!session) {
+      return NextResponse.json(
+        { error: "Authentication required" },
+        { status: 401 }
+      );
+    }
+
     await dbConnect();
     
-    const { lineId } = await params;
+    const { id: factoryId, lineId } = await params;
     
-    // Delete production line
-    const productionLine = await ProductionLine.findByIdAndDelete(lineId);
+    // Verify the factory belongs to the authenticated user
+    const factory = await Factory.findOne({ _id: factoryId, userId: session.user?.id });
+    if (!factory) {
+      return NextResponse.json(
+        { error: "Factory not found or access denied" },
+        { status: 403 }
+      );
+    }
+    
+    // Delete production line, but only if it belongs to the user's factory
+    const productionLine = await ProductionLine.findOneAndDelete({ 
+      _id: lineId, 
+      factoryId 
+    });
     
     if (!productionLine) {
       return NextResponse.json(
-        { error: 'Production line not found' },
+        { error: 'Production line not found or access denied' },
         { status: 404 }
       );
     }

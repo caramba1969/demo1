@@ -1,7 +1,9 @@
 "use client";
 import { useState, useEffect } from "react";
+import { useSession } from "next-auth/react";
 import { Sidebar } from "../components/Sidebar";
 import { FactorySection } from "../components/FactorySection";
+import { DismissibleNotification } from "@/components/ui/dismissible-notification";
 
 interface Factory {
   id: string; 
@@ -16,9 +18,22 @@ export default function Home() {
   const [activeFactoryId, setActiveFactoryId] = useState<string | undefined>();
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [showWelcomeNotification, setShowWelcomeNotification] = useState(false);
+  const { data: session, status } = useSession();
 
-  // Load existing factories on component mount
+  // Check localStorage for welcome notification preference
   useEffect(() => {
+    const hasSeenWelcome = localStorage.getItem('factoryplanner-welcome-dismissed');
+    setShowWelcomeNotification(!hasSeenWelcome && !!session);
+  }, [session]);
+  // Load existing factories on component mount - only if authenticated
+  useEffect(() => {
+    if (status === "loading") return; // Don't load until we know auth status
+    if (status === "unauthenticated") {
+      setIsLoading(false);
+      return;
+    }
+
     const loadFactories = async () => {
       try {
         setIsLoading(true);
@@ -55,13 +70,17 @@ export default function Home() {
         setError("Failed to load factories");
       } finally {
         setIsLoading(false);
-      }
-    };
+      }    };
 
     loadFactories();
-  }, []);
-
+  }, [status]); // Re-run when authentication status changes
   async function handleAddFactory() {
+    // Check if user is authenticated
+    if (status !== "authenticated") {
+      setError("You must be logged in to add factories");
+      return;
+    }
+
     const name = "A new factory";
     try {
       const res = await fetch("/api/factories", {
@@ -146,7 +165,11 @@ export default function Home() {
     } catch (err) {
       console.error("Error deleting factory:", err);
       setError("Failed to delete factory");
-    }
+    }  };
+
+  const handleWelcomeDismiss = () => {
+    setShowWelcomeNotification(false);
+    localStorage.setItem('factoryplanner-welcome-dismissed', 'true');
   };
 
   return (
@@ -158,9 +181,35 @@ export default function Home() {
         onSelectFactory={handleSelectFactory}
         onDeleteFactory={handleFactoryDelete}
         onReorderFactories={handleReorderFactories}
-      />
-      <main className="ml-64 flex-1 overflow-y-auto h-[calc(100vh-3rem)]">
-        <div className="flex flex-col items-center p-4 md:p-8">
+      />      <main className="ml-64 flex-1 overflow-y-auto h-[calc(100vh-3rem)]">        <div className="flex flex-col items-center p-4 md:p-8">
+          {/* Welcome notification for authenticated users */}
+          {session && showWelcomeNotification && (
+            <div className="w-full max-w-4xl mb-6">              <DismissibleNotification
+                autoDismissMs={30000} // 30 seconds
+                className="p-4 bg-gradient-to-r from-orange-500/10 to-orange-600/10 border border-orange-500/20 rounded-lg"
+                onDismiss={handleWelcomeDismiss}
+              >
+                <div className="flex items-center gap-3">
+                  {session.user?.image && (
+                    <img 
+                      src={session.user.image} 
+                      alt={session.user.name || "User"} 
+                      className="w-12 h-12 rounded-full border-2 border-orange-500"
+                    />
+                  )}
+                  <div>
+                    <h2 className="text-lg font-semibold text-neutral-100">
+                      Welcome back, {session.user?.name?.split(' ')[0] || 'Engineer'}! 🏭
+                    </h2>
+                    <p className="text-sm text-neutral-400">
+                      Ready to optimize your Satisfactory factories? Let's build something amazing!
+                    </p>
+                  </div>
+                </div>
+              </DismissibleNotification>
+            </div>
+          )}
+          
           {isLoading ? (
             <div className="text-neutral-400 mt-16 flex items-center gap-2">
               <div className="w-4 h-4 border-2 border-neutral-400 border-t-transparent rounded-full animate-spin"></div>
@@ -177,7 +226,21 @@ export default function Home() {
               </button>
             </div>
           ) : factories.length === 0 ? (
-            <div className="text-neutral-400 mt-16">No factories yet. Click &quot;Add Factory&quot; to get started.</div>
+            <div className="text-center mt-16">
+              <div className="text-neutral-400 mb-4">
+                {session ? 
+                  "No factories yet. Click \"Add Factory\" to get started!" :
+                  "Sign in to start planning your Satisfactory factories."
+                }
+              </div>
+              {!session && (
+                <a href="/auth/signin">
+                  <button className="px-4 py-2 bg-orange-600 hover:bg-orange-700 text-white rounded-lg transition-colors">
+                    Sign In to Get Started
+                  </button>
+                </a>
+              )}
+            </div>
           ) : activeFactoryId ? (
             (() => {
               const activeFactory = factories.find(f => f.id === activeFactoryId);

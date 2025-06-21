@@ -1,5 +1,6 @@
 "use client";
 import { FC } from "react";
+import { useSession, signIn, signOut } from "next-auth/react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { Button } from "./ui/button";
@@ -7,13 +8,13 @@ import { Menu, LogIn, LayoutDashboard, BarChart2, BookOpen, HeartHandshake, User
 
 export const TopNav: FC = () => {
   const pathname = usePathname();
-  
+  const { data: session } = useSession();
   return (
     <nav className="w-full flex items-center justify-between px-4 py-2 bg-neutral-900 border-b border-neutral-800 shadow-sm z-50">
       <div className="flex items-center gap-3">
         <Menu className="w-6 h-6 text-neutral-400" aria-label="Open sidebar" />
         <span className="font-bold text-lg tracking-tight text-neutral-100">
-          Satisfactory Factories <span className="text-xs text-neutral-400">(ALPHA v0.4)</span>
+          Satisfactory Factories
         </span>
       </div>
       <div className="flex gap-2 items-center">
@@ -29,16 +30,19 @@ export const TopNav: FC = () => {
           >
             <LayoutDashboard className="w-5 h-5" /> Planner
           </Button>
-        </Link>
-        <Button variant="ghost" className="flex gap-1 text-neutral-200" aria-label="Graph (WIP)">
+        </Link>        <Button variant="ghost" className="flex gap-1 text-neutral-200" aria-label="Graph (WIP)">
           <BarChart2 className="w-5 h-5" /> Graph (WIP)
         </Button>
-        <Button variant="ghost" className="flex gap-1 text-neutral-200" aria-label="Recipes">
-          <BookOpen className="w-5 h-5" /> Recipes
-        </Button>
-        <Button variant="ghost" className="flex gap-1 text-neutral-200" aria-label="Change Log">
-          <BookOpen className="w-5 h-5" /> Change Log
-        </Button>
+        <Link href="/recipes">
+          <Button variant="ghost" className="flex gap-1 text-neutral-200" aria-label="Recipes">
+            <BookOpen className="w-5 h-5" /> Recipes
+          </Button>
+        </Link>
+        <Link href="/changelog">
+          <Button variant="ghost" className="flex gap-1 text-neutral-200" aria-label="Change Log">
+            <BookOpen className="w-5 h-5" /> Change Log
+          </Button>
+        </Link>
         <Link href="/admin">
           <Button 
             variant="ghost" 
@@ -52,18 +56,51 @@ export const TopNav: FC = () => {
             <Settings className="w-5 h-5" /> Admin
           </Button>
         </Link>
-      </div>
-      <div className="flex gap-2 items-center">
-        <Button variant="outline" className="border-pink-500 text-pink-400 hover:bg-pink-500/10" aria-label="Support me on Ko-fi">
-          <HeartHandshake className="w-5 h-5" /> Ko-fi
-        </Button>
-        <Button variant="outline" className="border-blue-500 text-blue-400 hover:bg-blue-500/10" aria-label="Discord">
-          {/* Use a fallback icon for Discord, e.g., User */}
-          <User className="w-5 h-5" /> Discord
-        </Button>
-        <Button variant="default" className="bg-neutral-700 text-neutral-100" aria-label="Sign In">
-          <LogIn className="w-5 h-5" /> Sign In
-        </Button>
+      </div>      <div className="flex gap-4 items-center">
+        {session ? (
+          <div className="flex items-center gap-4">
+            {/* User Profile Section */}
+            <div className="flex items-center gap-3 px-3 py-2 rounded-lg bg-neutral-800/50 border border-neutral-700/50 hover:bg-neutral-800/70 transition-all duration-200">
+              {session.user?.image && (
+                <img 
+                  src={session.user.image} 
+                  alt={session.user.name || "User"} 
+                  className="w-9 h-9 rounded-full border-2 border-orange-500/70 shadow-sm"
+                />
+              )}
+              <div className="hidden md:block min-w-0">
+                <p className="text-sm font-semibold text-neutral-100 truncate max-w-[150px]">
+                  {session.user?.name || "User"}
+                </p>
+                <p className="text-xs text-neutral-400 truncate max-w-[150px]">
+                  {session.user?.email}
+                </p>
+              </div>
+            </div>
+              {/* Sign Out Button */}
+            <Button
+              variant="ghost"
+              size="sm"
+              className="text-neutral-300 hover:text-white hover:bg-red-500/10 hover:border-red-500/30 border border-transparent transition-all duration-200 font-medium px-4 py-2"
+              aria-label="Sign Out"
+              onClick={() => signOut()}
+            >
+              <LogIn className="w-4 h-4 mr-2 rotate-180" /> 
+              <span className="hidden sm:inline">Sign Out</span>
+              <span className="sm:hidden">Out</span>
+            </Button>
+          </div>
+        ) : (
+          <Link href="/auth/signin">
+            <Button
+              variant="default"
+              className="bg-orange-600 hover:bg-orange-700 text-white font-medium shadow-sm hover:shadow-md transition-all duration-200"
+              aria-label="Sign In"
+            >
+              <LogIn className="w-4 h-4 mr-2" /> Sign In
+            </Button>
+          </Link>
+        )}
       </div>
     </nav>
   );
