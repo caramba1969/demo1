@@ -7,10 +7,11 @@ This document tracks all changes made to the Satisfactory Factory Planner applic
 1. [01-database-models.md](./01-database-models.md) - Database Models and Schema Design
 2. [02-api-endpoints.md](./02-api-endpoints.md) - API Endpoints Development
 3. [03-data-import.md](./03-data-import.md) - Satisfactory Data Import System
-4. [04-ui-components.md](./04-ui-components.md) - UI Components for Production Planning
-5. [05-factory-integration.md](./05-factory-integration.md) - Factory Section Integration
-6. [06-navigation-improvements.md](./06-navigation-improvements.md) - Navigation and Layout Improvements
-7. [07-bug-fixes-improvements.md](./07-bug-fixes-improvements.md) - Bug Fixes and UX Improvements
+4. [04-production-planning.md](./04-production-planning.md) - Production Planning System
+5. [05-layout-system.md](./05-layout-system.md) - Layout System Refactor
+6. [06-bug-fixes.md](./06-bug-fixes.md) - Bug Fixes and Data Enrichment
+7. [07-collapsible-production-lines.md](./07-collapsible-production-lines.md) - Collapsible Production Lines with State Persistence
+8. [08-image-management.md](./08-image-management.md) - Image Storage and Management Guide
 
 ## Project Architecture
 - **Frontend**: Next.js 14+ with React 19+, TypeScript, TailwindCSS, shadcn/ui
@@ -27,6 +28,7 @@ This document tracks all changes made to the Satisfactory Factory Planner applic
 - ✅ Building count and power consumption calculations
 - ✅ Admin interface for data management
 - ✅ Responsive design with fixed sidebar navigation
+- ✅ Collapsible production lines with state persistence
 
 ## Technology Stack
 - **Next.js 14+** - App Router, Server Components, Client Components

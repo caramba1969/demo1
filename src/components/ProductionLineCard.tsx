@@ -1,7 +1,7 @@
 'use client';
 
-import React, { useState } from 'react';
-import { Factory, Zap, Clock, Trash2, Edit3, Package } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { Factory, Zap, Clock, Trash2, Edit3, Package, ChevronDown, ChevronUp } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 
@@ -47,6 +47,24 @@ export default function ProductionLineCard({
   const [editTarget, setEditTarget] = useState(productionLine.targetQuantityPerMinute);
   const [editNotes, setEditNotes] = useState(productionLine.notes || '');
   const [loading, setLoading] = useState(false);
+  const [isCollapsed, setIsCollapsed] = useState(false);
+
+  // Load collapse state from localStorage on mount
+  useEffect(() => {
+    const savedState = localStorage.getItem(`production-line-${productionLine._id}-collapsed`);
+    if (savedState !== null) {
+      setIsCollapsed(JSON.parse(savedState));
+    }
+  }, [productionLine._id]);
+
+  // Save collapse state to localStorage when it changes
+  useEffect(() => {
+    localStorage.setItem(`production-line-${productionLine._id}-collapsed`, JSON.stringify(isCollapsed));
+  }, [isCollapsed, productionLine._id]);
+
+  const toggleCollapse = () => {
+    setIsCollapsed(!isCollapsed);
+  };
 
   const handleSave = async () => {
     try {
@@ -95,24 +113,45 @@ export default function ProductionLineCard({
   return (
     <div className={`bg-slate-900 border border-slate-700 rounded-lg p-6 ${className} ${
       !productionLine.active ? 'opacity-60' : ''
-    }`}>
-      {/* Header */}
+    }`}>      {/* Header */}
       <div className="flex items-start justify-between mb-4">
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-3 flex-1">
           <div className="w-10 h-10 bg-orange-500/20 rounded-lg flex items-center justify-center">
             <Package className="w-5 h-5 text-orange-400" />
           </div>
-          <div>
+          <div className="flex-1">
             <h3 className="font-semibold text-white text-lg">
               {productionLine.item?.name || 'Unknown Item'}
             </h3>
             <p className="text-slate-400 text-sm">
               {productionLine.recipe?.name || 'Unknown Recipe'}
             </p>
+            {isCollapsed && (
+              <div className="flex items-center gap-4 mt-1">
+                <span className="text-xs text-slate-500">
+                  Target: {productionLine.targetQuantityPerMinute.toFixed(1)}/min
+                </span>
+                <span className="text-xs text-slate-500">
+                  Buildings: {productionLine.buildingCount || 0}
+                </span>
+                <span className="text-xs text-slate-500">
+                  Power: {productionLine.powerConsumption || 0}MW
+                </span>
+              </div>
+            )}
           </div>
         </div>
-        
-        <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={toggleCollapse}
+            className="border-slate-600 text-slate-400 hover:bg-slate-700"
+            title={isCollapsed ? 'Expand' : 'Collapse'}
+          >
+            {isCollapsed ? <ChevronDown className="w-4 h-4" /> : <ChevronUp className="w-4 h-4" />}
+          </Button>
+          
           <Button
             variant="outline"
             size="sm"
@@ -165,12 +204,14 @@ export default function ProductionLineCard({
                 Cancel
               </Button>
             </>
-          )}
-        </div>
+          )}        </div>
       </div>
 
-      {/* Production Metrics */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
+      {/* Collapsible Content */}
+      {!isCollapsed && (
+        <>
+          {/* Production Metrics */}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
         <div className="bg-slate-800 rounded-lg p-4">
           <div className="flex items-center gap-2 mb-2">
             <Package className="w-4 h-4 text-orange-400" />
@@ -275,9 +316,10 @@ export default function ProductionLineCard({
         ) : (
           <p className="text-slate-300 text-sm">
             {productionLine.notes || 'No notes added'}
-          </p>
-        )}
+          </p>        )}
       </div>
+        </>
+      )}
     </div>
   );
 }
