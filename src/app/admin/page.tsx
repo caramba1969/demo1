@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Upload, CheckCircle, AlertCircle, Loader2 } from 'lucide-react';
+import { Sidebar } from '@/components/Sidebar';
 
 export default function AdminPage() {
   const [importing, setImporting] = useState(false);
@@ -47,22 +48,29 @@ export default function AdminPage() {
     }
   };
 
+  // Empty function for sidebar - admin doesn't add factories
+  const handleAddFactory = () => {
+    // Could redirect to main page or show message
+  };
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 p-8">
-      <div className="max-w-4xl mx-auto">
-        <div className="bg-slate-900 border border-slate-700 rounded-lg p-8">
-          <div className="flex items-center gap-3 mb-8">
-            <Upload className="w-8 h-8 text-orange-400" />
-            <h1 className="text-3xl font-bold text-white">Factory Planner Admin</h1>
-          </div>
+    <>
+      <Sidebar onAddFactory={handleAddFactory} />
+      <main className="ml-64 flex-1 overflow-y-auto h-[calc(100vh-3rem)]">
+        <div className="bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 p-8 min-h-full">
+          <div className="max-w-4xl mx-auto">
+            <div className="bg-slate-900 border border-slate-700 rounded-lg p-8">
+              <div className="flex items-center gap-3 mb-8">
+                <Upload className="w-8 h-8 text-orange-400" />
+                <h1 className="text-3xl font-bold text-white">Factory Planner Admin</h1>
+              </div>
 
-          <div className="space-y-6">
-            <div className="bg-slate-800 rounded-lg p-6">
-              <h2 className="text-xl font-semibold text-white mb-4">Import Satisfactory Data</h2>
-              <p className="text-slate-300 mb-6">
-                Import items and recipes from the Satisfactory game data into the database.
-                This will populate the item and recipe databases needed for production planning.
-              </p>
+              <div className="space-y-6">
+                <div className="bg-slate-800 rounded-lg p-6">
+                  <h2 className="text-xl font-semibold text-white mb-4">Import Satisfactory Data</h2>
+                  <p className="text-slate-300 mb-6">
+                    Import items and recipes from the Satisfactory game data into the database.
+                    This will populate the item and recipe databases needed for production planning.
+                  </p>
 
               <Button
                 onClick={handleImportData}
@@ -107,25 +115,24 @@ export default function AdminPage() {
                       <p>Recipes imported: {importResult.recipesImported}</p>
                     </div>
                   )}
+                </div>              )}
+            </div>                <div className="bg-slate-800 rounded-lg p-6">
+                  <h2 className="text-xl font-semibold text-white mb-4">Database Status</h2>
+                  <p className="text-slate-300">
+                    After importing the data, you'll be able to:
+                  </p>
+                  <ul className="list-disc list-inside text-slate-300 mt-2 space-y-1">
+                    <li>Select items from the Satisfactory database</li>
+                    <li>Choose recipes for production planning</li>
+                    <li>Calculate production requirements and building counts</li>
+                    <li>Plan complex factory layouts with dependencies</li>
+                  </ul>
                 </div>
-              )}
-            </div>
-
-            <div className="bg-slate-800 rounded-lg p-6">
-              <h2 className="text-xl font-semibold text-white mb-4">Database Status</h2>
-              <p className="text-slate-300">
-                After importing the data, you'll be able to:
-              </p>
-              <ul className="list-disc list-inside text-slate-300 mt-2 space-y-1">
-                <li>Select items from the Satisfactory database</li>
-                <li>Choose recipes for production planning</li>
-                <li>Calculate production requirements and building counts</li>
-                <li>Plan complex factory layouts with dependencies</li>
-              </ul>
+              </div>
             </div>
           </div>
         </div>
-      </div>
-    </div>
+      </main>
+    </>
   );
 }

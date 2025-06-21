@@ -82,40 +82,42 @@ export default function Home() {
   };
 
   return (
-    <div className="flex min-h-screen w-full">
+    <>
       <Sidebar onAddFactory={handleAddFactory} />
-      <main className="flex-1 flex flex-col items-center p-4 md:p-8">
-        {isLoading ? (
-          <div className="text-neutral-400 mt-16 flex items-center gap-2">
-            <div className="w-4 h-4 border-2 border-neutral-400 border-t-transparent rounded-full animate-spin"></div>
-            Loading factories...
-          </div>
-        ) : error ? (
-          <div className="text-red-400 mt-16">
-            {error}
-            <button 
-              onClick={() => window.location.reload()} 
-              className="ml-2 text-blue-400 hover:text-blue-300 underline"
-            >
-              Retry
-            </button>
-          </div>
-        ) : factories.length === 0 ? (
-          <div className="text-neutral-400 mt-16">No factories yet. Click &quot;Add Factory&quot; to get started.</div>
-        ) : (
-          factories.map(f => (
-            <FactorySection 
-              key={f.id} 
-              id={f.id}
-              initialName={f.name} 
-              initialTasks={f.tasks}
-              initialNotes={f.notes}
-              onNameChange={handleFactoryNameChange}
-              onDelete={handleFactoryDelete}
-            />
-          ))
-        )}
+      <main className="ml-64 flex-1 overflow-y-auto h-[calc(100vh-3rem)]">
+        <div className="flex flex-col items-center p-4 md:p-8">
+          {isLoading ? (
+            <div className="text-neutral-400 mt-16 flex items-center gap-2">
+              <div className="w-4 h-4 border-2 border-neutral-400 border-t-transparent rounded-full animate-spin"></div>
+              Loading factories...
+            </div>
+          ) : error ? (
+            <div className="text-red-400 mt-16">
+              {error}
+              <button 
+                onClick={() => window.location.reload()} 
+                className="ml-2 text-blue-400 hover:text-blue-300 underline"
+              >
+                Retry
+              </button>
+            </div>
+          ) : factories.length === 0 ? (
+            <div className="text-neutral-400 mt-16">No factories yet. Click &quot;Add Factory&quot; to get started.</div>
+          ) : (
+            factories.map(f => (
+              <FactorySection 
+                key={f.id} 
+                id={f.id}
+                initialName={f.name} 
+                initialTasks={f.tasks}
+                initialNotes={f.notes}
+                onNameChange={handleFactoryNameChange}
+                onDelete={handleFactoryDelete}
+              />
+            ))
+          )}
+        </div>
       </main>
-    </div>
+    </>
   );
 }
