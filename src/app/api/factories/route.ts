@@ -4,14 +4,19 @@ import { Factory } from "@/lib/models/Factory";
 
 export async function GET() {
   await dbConnect();
-  const factories = await Factory.find().sort({ createdAt: -1 });
+  const factories = await Factory.find().sort({ order: 1, createdAt: -1 });
   return NextResponse.json(factories);
 }
 
 export async function POST(req: NextRequest) {
   await dbConnect();
   const { name } = await req.json();
-  const factory = await Factory.create({ name });
+  
+  // Get the highest order value to assign to the new factory
+  const lastFactory = await Factory.findOne().sort({ order: -1 });
+  const order = (lastFactory?.order || 0) + 1;
+  
+  const factory = await Factory.create({ name, order });
   return NextResponse.json(factory, { status: 201 });
 }
 

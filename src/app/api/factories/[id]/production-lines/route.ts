@@ -29,6 +29,29 @@ async function calculateProductionMetrics(productionLine: any) {
     // Estimate power consumption (basic calculation)
     const powerPerBuilding = recipe.maxPower || 1;
     const totalPowerConsumption = requiredBuildings * powerPerBuilding;
+      // Populate ingredient names
+    const enrichedIngredients = await Promise.all(
+      recipe.ingredients.map(async (ingredient: any) => {
+        const ingredientItem = await Item.findOne({ className: ingredient.item }).lean() as IItem | null;
+        return {
+          item: ingredient.item,
+          amount: ingredient.amount,
+          name: ingredientItem?.name || ingredient.item
+        };
+      })
+    );
+    
+    // Populate product names
+    const enrichedProducts = await Promise.all(
+      recipe.products.map(async (product: any) => {
+        const productItem = await Item.findOne({ className: product.item }).lean() as IItem | null;
+        return {
+          item: product.item,
+          amount: product.amount,
+          name: productItem?.name || product.item
+        };
+      })
+    );
     
     return {
       ...productionLine,
@@ -39,8 +62,8 @@ async function calculateProductionMetrics(productionLine: any) {
       recipe: {
         name: recipe.name,
         time: recipe.time,
-        ingredients: recipe.ingredients,
-        products: recipe.products
+        ingredients: enrichedIngredients,
+        products: enrichedProducts
       },
       item: {
         name: item.name,
@@ -61,7 +84,7 @@ export async function GET(
   try {
     await dbConnect();
     
-    const factoryId = params.id;
+    const { id: factoryId } = await params;
     
     // Get production lines for this factory
     const productionLines = await ProductionLine.find({ factoryId })
@@ -92,7 +115,7 @@ export async function POST(
   try {
     await dbConnect();
     
-    const factoryId = params.id;
+    const { id: factoryId } = await params;
     const body = await request.json();
     
     // Validate that the item and recipe exist

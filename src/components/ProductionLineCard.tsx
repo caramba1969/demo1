@@ -5,6 +5,14 @@ import { Factory, Zap, Clock, Trash2, Edit3, Package, ChevronDown, ChevronUp } f
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 
+// Utility function to get item image URL from className
+const getItemImageUrl = (className: string) => {
+  if (!className) return null;
+  // Convert className to lowercase and replace underscores with hyphens for the image filename
+  const imageName = className.toLowerCase().replace(/_/g, '-');
+  return `/images/items/${imageName}_64.png`;
+};
+
 interface ProductionLine {
   _id: string;
   itemClassName: string;
@@ -24,9 +32,8 @@ interface ProductionLine {
   };
   recipe?: {
     name: string;
-    time: number;
-    ingredients: Array<{ item: string; amount: number }>;
-    products: Array<{ item: string; amount: number }>;
+    time: number;    ingredients: Array<{ item: string; amount: number; name?: string }>;
+    products: Array<{ item: string; amount: number; name?: string }>;
   };
 }
 
@@ -114,10 +121,20 @@ export default function ProductionLineCard({
     <div className={`bg-slate-900 border border-slate-700 rounded-lg p-6 ${className} ${
       !productionLine.active ? 'opacity-60' : ''
     }`}>      {/* Header */}
-      <div className="flex items-start justify-between mb-4">
-        <div className="flex items-center gap-3 flex-1">
-          <div className="w-10 h-10 bg-orange-500/20 rounded-lg flex items-center justify-center">
-            <Package className="w-5 h-5 text-orange-400" />
+      <div className="flex items-start justify-between mb-4">        <div className="flex items-center gap-3 flex-1">          <div className="w-10 h-10 bg-orange-500/20 rounded-lg flex items-center justify-center relative overflow-hidden">
+            {productionLine.itemClassName && getItemImageUrl(productionLine.itemClassName) ? (
+              <img 
+                src={getItemImageUrl(productionLine.itemClassName)!} 
+                alt={productionLine.item?.name || 'Item'} 
+                className="w-8 h-8 object-contain"
+                onError={(e) => {
+                  // Fallback to Package icon if image fails to load
+                  e.currentTarget.style.display = 'none';
+                  e.currentTarget.nextElementSibling?.classList.remove('hidden');
+                }}
+              />
+            ) : null}
+            <Package className={`w-5 h-5 text-orange-400 ${productionLine.itemClassName && getItemImageUrl(productionLine.itemClassName) ? 'hidden' : ''}`} />
           </div>
           <div className="flex-1">
             <h3 className="font-semibold text-white text-lg">
@@ -282,27 +299,45 @@ export default function ProductionLineCard({
                 )}
               </p>
             </div>
-          </div>
-
-          {productionLine.recipe.ingredients.length > 0 && (
+          </div>          {productionLine.recipe.ingredients.length > 0 && (
             <div className="mt-3 pt-3 border-t border-slate-700">
-              <p className="text-slate-400 text-xs mb-2">Ingredients per cycle:</p>
-              <div className="flex flex-wrap gap-2">
-                {productionLine.recipe.ingredients.map((ingredient, index) => (
-                  <span
-                    key={index}
-                    className="px-2 py-1 bg-slate-700 rounded text-xs text-slate-300"
-                  >
-                    {ingredient.amount}x {ingredient.item}
-                  </span>
-                ))}
+              <p className="text-slate-400 text-xs mb-2">Ingredients per cycle:</p>              <div className="flex flex-wrap gap-2">
+                {productionLine.recipe.ingredients.map((ingredient, index) => {
+                  // Calculate total ingredient consumption based on building count
+                  const buildingCount = productionLine.buildingCount || 0;
+                  const cycleTime = productionLine.recipe?.time || 1;
+                  const ingredientPerMinute = (ingredient.amount * buildingCount * 60) / cycleTime;
+                  
+                  return (
+                    <span
+                      key={index}
+                      className="px-2 py-1 bg-slate-700 rounded text-xs text-slate-300 flex items-center gap-1"
+                    >                      {ingredient.item && getItemImageUrl(ingredient.item) && (
+                        <img 
+                          src={getItemImageUrl(ingredient.item)!} 
+                          alt={ingredient.name || ingredient.item} 
+                          className="w-4 h-4 object-contain"
+                          onError={(e) => {
+                            e.currentTarget.style.display = 'none';
+                          }}
+                        />
+                      )}
+                      <span>
+                        {ingredient.amount}x {ingredient.name || ingredient.item}
+                        {buildingCount > 0 && (
+                          <span className="text-blue-400 ml-1">
+                            ({ingredientPerMinute.toFixed(1)}/min)
+                          </span>
+                        )}
+                      </span>
+                    </span>
+                  );
+                })}
               </div>
             </div>
           )}
         </div>
-      )}
-
-      {/* Notes */}
+      )}      {/* Notes */}
       <div className="bg-slate-800 rounded-lg p-4">
         <h4 className="font-medium text-white mb-2">Notes</h4>
         {isEditing ? (
@@ -320,6 +355,35 @@ export default function ProductionLineCard({
       </div>
         </>
       )}
+
+      {/* Footer Summary */}
+      <div className="mt-4 pt-4 border-t border-slate-700">
+        <div className="flex items-center justify-between text-sm">
+          <div className="flex items-center gap-6">
+            <div className="flex items-center gap-2">
+              <Zap className="w-4 h-4 text-yellow-400" />
+              <span className="text-slate-400">Consumes:</span>
+              <span className="text-yellow-400 font-medium">{productionLine.powerConsumption || 0} MW</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <Factory className="w-4 h-4 text-blue-400" />
+              <span className="text-slate-400">Buildings:</span>
+              <span className="text-blue-400 font-medium">{productionLine.buildingCount || 0}</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <Package className="w-4 h-4 text-orange-400" />
+              <span className="text-slate-400">Produces:</span>
+              <span className="text-orange-400 font-medium">{actualOutput.toFixed(1)}/min</span>
+            </div>
+          </div>
+          <div className="flex items-center gap-2">
+            <div className={`w-2 h-2 rounded-full ${productionLine.active ? 'bg-green-400' : 'bg-red-400'}`}></div>
+            <span className={`text-xs font-medium ${productionLine.active ? 'text-green-400' : 'text-red-400'}`}>
+              {productionLine.active ? 'Active' : 'Inactive'}
+            </span>
+          </div>
+        </div>
+      </div>
     </div>
   );
 }

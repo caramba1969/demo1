@@ -61,7 +61,7 @@ export async function PATCH(
   try {
     await dbConnect();
     
-    const lineId = params.lineId;
+    const { lineId } = await params;
     const body = await request.json();
     
     // Update production line
@@ -99,7 +99,7 @@ export async function DELETE(
   try {
     await dbConnect();
     
-    const lineId = params.lineId;
+    const { lineId } = await params;
     
     // Delete production line
     const productionLine = await ProductionLine.findByIdAndDelete(lineId);

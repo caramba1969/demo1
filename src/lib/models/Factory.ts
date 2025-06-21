@@ -2,6 +2,7 @@ import { Schema, models, model } from "mongoose";
 
 const FactorySchema = new Schema({
   name: { type: String, required: true },
+  order: { type: Number, default: 0 },
   tasks: [{ 
     id: { type: String, required: true },
     text: { type: String, required: true },
