@@ -15,9 +15,12 @@ import {
   ArrowRight,
   HelpCircle,
   Check,
-  X
+  X,
+  Factory
 } from "lucide-react";
 import { DeleteConfirmationDialog } from "./DeleteConfirmationDialog";
+import ItemRecipeSelector from "./ItemRecipeSelector";
+import ProductionLineCard from "./ProductionLineCard";
 
 interface Task {
   id: string;
@@ -30,6 +33,31 @@ interface Note {
   id: string;
   text: string;
   createdAt: string;
+}
+
+interface ProductionLine {
+  _id: string;
+  itemClassName: string;
+  recipeClassName: string;
+  targetQuantityPerMinute: number;
+  actualQuantityPerMinute?: number;
+  buildingCount?: number;
+  buildingType?: string;
+  powerConsumption?: number;
+  efficiency?: number;
+  notes?: string;
+  active: boolean;
+  item?: {
+    name: string;
+    icon?: string;
+    slug: string;
+  };
+  recipe?: {
+    name: string;
+    time: number;
+    ingredients: Array<{ item: string; amount: number }>;
+    products: Array<{ item: string; amount: number }>;
+  };
 }
 
 interface FactorySectionProps {
@@ -48,8 +76,7 @@ export const FactorySection: FC<FactorySectionProps> = ({
   initialNotes = [],
   onNameChange,
   onDelete
-}) => {
-  const [name, setName] = useState(initialName);
+}) => {  const [name, setName] = useState(initialName);
   const [editing, setEditing] = useState(false);
   const [isUpdating, setIsUpdating] = useState(false);
   const [showSatisfactionDetails, setShowSatisfactionDetails] = useState(false);
@@ -61,6 +88,88 @@ export const FactorySection: FC<FactorySectionProps> = ({
   const [isAddingNote, setIsAddingNote] = useState(false);
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
+  
+  // Production lines state
+  const [productionLines, setProductionLines] = useState<ProductionLine[]>([]);
+  const [showProductionSelector, setShowProductionSelector] = useState(false);
+  const [loadingProductionLines, setLoadingProductionLines] = useState(false);  // Load production lines
+  const loadProductionLines = async () => {
+    try {
+      setLoadingProductionLines(true);
+      const response = await fetch(`/api/factories/${id}/production-lines`);
+      if (!response.ok) throw new Error('Failed to fetch production lines');
+      
+      const data = await response.json();
+      setProductionLines(data.productionLines || []);
+    } catch (error) {
+      console.error('Error loading production lines:', error);
+    } finally {
+      setLoadingProductionLines(false);
+    }
+  };
+
+  // Add production line
+  const handleAddProductionLine = async (data: {
+    item: any;
+    recipe: any;
+    targetQuantityPerMinute: number;
+  }) => {
+    try {
+      const response = await fetch(`/api/factories/${id}/production-lines`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          itemClassName: data.item.className,
+          recipeClassName: data.recipe.className,
+          targetQuantityPerMinute: data.targetQuantityPerMinute,
+        }),
+      });
+
+      if (!response.ok) throw new Error('Failed to add production line');
+
+      await loadProductionLines(); // Refresh the list
+      setShowProductionSelector(false);
+    } catch (error) {
+      console.error('Error adding production line:', error);
+    }
+  };
+
+  // Update production line
+  const handleUpdateProductionLine = async (lineId: string, updates: Partial<ProductionLine>) => {
+    try {
+      const response = await fetch(`/api/factories/${id}/production-lines/${lineId}`, {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(updates),
+      });
+
+      if (!response.ok) throw new Error('Failed to update production line');
+
+      await loadProductionLines(); // Refresh the list
+    } catch (error) {
+      console.error('Error updating production line:', error);
+    }
+  };
+
+  // Delete production line
+  const handleDeleteProductionLine = async (lineId: string) => {
+    try {
+      const response = await fetch(`/api/factories/${id}/production-lines/${lineId}`, {
+        method: 'DELETE',
+      });
+
+      if (!response.ok) throw new Error('Failed to delete production line');
+
+      await loadProductionLines(); // Refresh the list
+    } catch (error) {
+      console.error('Error deleting production line:', error);
+    }
+  };
+
   // Update local state when initial data changes
   useEffect(() => {
     setName(initialName);
@@ -73,6 +182,11 @@ export const FactorySection: FC<FactorySectionProps> = ({
   useEffect(() => {
     setNotes(initialNotes);
   }, [initialNotes]);
+
+  // Load production lines on mount
+  useEffect(() => {
+    loadProductionLines();
+  }, [id]);
 
   const handleAddTask = async () => {
     if (!newTask.trim() || isAddingTask) return;
@@ -537,11 +651,62 @@ export const FactorySection: FC<FactorySectionProps> = ({
                   <X className="w-4 h-4" />
                 </Button>
               </div>
-            ))}
-            {notes.length === 0 && (
+            ))}            {notes.length === 0 && (
               <p className="text-neutral-400 text-sm text-center py-4">No notes yet</p>
             )}          </div>
         </div>
+      </div>
+
+      {/* Production Lines Section */}
+      <div className="bg-neutral-800 rounded-xl border-2 border-neutral-700 p-6 mt-6">
+        <div className="flex items-center justify-between mb-6">
+          <div className="flex items-center gap-3">
+            <Factory className="w-6 h-6 text-orange-400" />
+            <h3 className="text-white font-semibold text-lg">Production Lines</h3>
+          </div>
+          <Button
+            onClick={() => setShowProductionSelector(!showProductionSelector)}
+            className="bg-orange-600 hover:bg-orange-700 text-white"
+          >
+            <Plus className="w-4 h-4 mr-2" />
+            Add Production Line
+          </Button>
+        </div>
+
+        {/* Production Selector */}
+        {showProductionSelector && (
+          <div className="mb-6">
+            <ItemRecipeSelector
+              onSelectionComplete={handleAddProductionLine}
+              className="mb-4"
+            />
+          </div>
+        )}
+
+        {/* Production Lines List */}
+        {loadingProductionLines ? (
+          <div className="text-center py-8">
+            <Loader2 className="w-6 h-6 animate-spin mx-auto text-orange-400" />
+            <p className="text-neutral-400 mt-2">Loading production lines...</p>
+          </div>
+        ) : productionLines.length === 0 ? (
+          <div className="text-center py-8">
+            <Factory className="w-12 h-12 mx-auto text-neutral-600 mb-3" />
+            <p className="text-neutral-400">No production lines yet</p>
+            <p className="text-neutral-500 text-sm">Add a production line to start planning your factory</p>
+          </div>
+        ) : (
+          <div className="space-y-4">
+            {productionLines.map((line) => (
+              <ProductionLineCard
+                key={line._id}
+                productionLine={line}
+                onUpdate={handleUpdateProductionLine}
+                onDelete={handleDeleteProductionLine}
+              />
+            ))}
+          </div>
+        )}
       </div>
 
       {/* Delete Confirmation Dialog */}
