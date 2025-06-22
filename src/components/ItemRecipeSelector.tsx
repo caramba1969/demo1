@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Search, Package, Beaker } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
@@ -38,9 +38,14 @@ interface ItemRecipeSelectorProps {
     targetQuantityPerMinute: number;
   }) => void;
   className?: string;
+  filterByItemClass?: string; // Optional filter to show only recipes that produce a specific item
 }
 
-export default function ItemRecipeSelector({ onSelectionComplete, className = '' }: ItemRecipeSelectorProps) {
+export default function ItemRecipeSelector({ 
+  onSelectionComplete, 
+  className = '', 
+  filterByItemClass 
+}: ItemRecipeSelectorProps) {
   const [step, setStep] = useState<'item' | 'recipe' | 'quantity'>('item');
   const [items, setItems] = useState<Item[]>([]);
   const [recipes, setRecipes] = useState<Recipe[]>([]);
@@ -87,21 +92,27 @@ export default function ItemRecipeSelector({ onSelectionComplete, className = ''
     } finally {
       setLoading(false);
     }
-  };
-
-  // Load items on component mount
+  };  // Load items on component mount and when search changes (with debounce)
   useEffect(() => {
-    fetchItems();
-  }, []);
+    const timeoutId = setTimeout(() => {
+      fetchItems(searchTerm);
+    }, 300);
 
-  // Filter items based on search
-  const filteredItems = useMemo(() => {
-    if (!searchTerm) return items;
-    return items.filter(item => 
-      item.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      item.description?.toLowerCase().includes(searchTerm.toLowerCase())
-    );
-  }, [items, searchTerm]);
+    return () => clearTimeout(timeoutId);
+  }, [searchTerm]);
+
+  // Auto-select item when filterByItemClass is provided
+  useEffect(() => {
+    if (filterByItemClass && items.length > 0) {
+      const targetItem = items.find(item => item.className === filterByItemClass);
+      if (targetItem) {
+        handleItemSelect(targetItem);
+      }
+    }
+  }, [filterByItemClass, items]);
+
+  // Use server-side filtering instead of client-side
+  const filteredItems = items;
 
   // Handle item selection
   const handleItemSelect = async (item: Item) => {

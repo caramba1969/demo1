@@ -249,9 +249,7 @@ export default function ProductionLineCard({
               <span className="text-sm font-normal text-slate-400 ml-1">/min</span>
             </p>
           )}
-        </div>
-
-        <div className="bg-slate-800 rounded-lg p-4">
+        </div>        <div className="bg-slate-800 rounded-lg p-4">
           <div className="flex items-center gap-2 mb-2">
             <Factory className="w-4 h-4 text-blue-400" />
             <span className="text-sm font-medium text-slate-300">Buildings</span>
@@ -260,7 +258,17 @@ export default function ProductionLineCard({
             {productionLine.buildingCount || 0}
           </p>
           <p className="text-sm text-slate-400">
-            {productionLine.buildingType || 'Unknown'}
+            {productionLine.buildingType ? 
+              productionLine.buildingType
+                .replace(/^Desc_/, '')
+                .replace(/Build_/, '')
+                .replace(/_C$/, '')
+                .replace(/_/g, ' ')
+                .replace(/([A-Z])/g, ' $1')
+                .trim()
+                .replace(/^\w/, c => c.toUpperCase()) || 'Unknown'
+              : 'Unknown'
+            }
           </p>
         </div>
 
@@ -274,15 +282,19 @@ export default function ProductionLineCard({
             <span className="text-sm font-normal text-slate-400 ml-1">MW</span>
           </p>
         </div>
-      </div>
-
-      {/* Recipe Details */}
+      </div>      {/* Recipe Details */}
       {productionLine.recipe && (
         <div className="bg-slate-800 rounded-lg p-4 mb-4">
           <h4 className="font-medium text-white mb-3 flex items-center gap-2">
             <Clock className="w-4 h-4 text-slate-400" />
             Recipe Details
           </h4>
+          
+          {/* Recipe Name */}
+          <div className="mb-3 pb-3 border-b border-slate-700">
+            <p className="text-slate-400 text-xs mb-1">Selected Recipe</p>
+            <p className="text-white font-medium">{productionLine.recipe.name}</p>
+          </div>
           
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
             <div>
@@ -299,7 +311,7 @@ export default function ProductionLineCard({
                 )}
               </p>
             </div>
-          </div>          {productionLine.recipe.ingredients.length > 0 && (
+          </div>{productionLine.recipe.ingredients.length > 0 && (
             <div className="mt-3 pt-3 border-t border-slate-700">
               <p className="text-slate-400 text-xs mb-2">Ingredients per cycle:</p>              <div className="flex flex-wrap gap-2">
                 {productionLine.recipe.ingredients.map((ingredient, index) => {

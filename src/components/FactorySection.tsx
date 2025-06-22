@@ -21,6 +21,8 @@ import {
 import { DeleteConfirmationDialog } from "./DeleteConfirmationDialog";
 import ItemRecipeSelector from "./ItemRecipeSelector";
 import ProductionLineCard from "./ProductionLineCard";
+import DependencyTracker from "./DependencyTracker";
+import ImportsList from "./ImportsList";
 
 interface Task {
   id: string;
@@ -88,11 +90,11 @@ export const FactorySection: FC<FactorySectionProps> = ({
   const [isAddingNote, setIsAddingNote] = useState(false);
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
-  
-  // Production lines state
+    // Production lines state
   const [productionLines, setProductionLines] = useState<ProductionLine[]>([]);
   const [showProductionSelector, setShowProductionSelector] = useState(false);
-  const [loadingProductionLines, setLoadingProductionLines] = useState(false);  // Load production lines
+  const [loadingProductionLines, setLoadingProductionLines] = useState(false);
+  const [filterItemForProduction, setFilterItemForProduction] = useState<string | undefined>(undefined);// Load production lines
   const loadProductionLines = async () => {
     try {
       setLoadingProductionLines(true);
@@ -127,10 +129,10 @@ export const FactorySection: FC<FactorySectionProps> = ({
         }),
       });
 
-      if (!response.ok) throw new Error('Failed to add production line');
-
-      await loadProductionLines(); // Refresh the list
+      if (!response.ok) throw new Error('Failed to add production line');      await loadProductionLines(); // Refresh the list
       setShowProductionSelector(false);
+      setFilterItemForProduction(undefined); // Clear the filter
+      setFilterItemForProduction(undefined);
     } catch (error) {
       console.error('Error adding production line:', error);
     }
@@ -473,64 +475,13 @@ export const FactorySection: FC<FactorySectionProps> = ({
         </div>
       </div>
 
-      {/* Mark as in sync with game */}
-      <div className="flex items-center gap-2 mb-6 text-neutral-400 text-sm">
-        <HelpCircle className="w-4 h-4" />
-        <span>Mark as in sync with game</span>
-        <HelpCircle className="w-4 h-4" />
-      </div>
+      
 
-      {/* Products & Power Generators Section */}
-      <div className="mb-8">
-        <div className="flex items-center gap-2 mb-4">
-          <div className="text-white text-lg">📦</div>
-          <h2 className="text-lg font-semibold text-white">Products & Power Generators</h2>
-        </div>        <div className="flex gap-3 flex-wrap">
-          <Button className="bg-blue-600 hover:bg-blue-700 text-white flex items-center gap-2 transition-colors">
-            <Plus className="w-4 h-4" />
-            ADD PRODUCT
-          </Button>
-          <Button className="bg-yellow-600 hover:bg-yellow-700 text-white flex items-center gap-2 transition-colors">
-            <Zap className="w-4 h-4" />
-            ADD POWER GENERATOR
-          </Button>
-        </div>
-      </div>
+      
 
-      {/* Imports Section */}
-      <div className="mb-8">
-        <div className="flex items-center gap-2 mb-2">
-          <ArrowRight className="w-5 h-5 text-white" />
-          <h2 className="text-lg font-semibold text-white">Imports</h2>
-        </div>
-        <p className="text-neutral-400">Awaiting product selection.</p>
-      </div>
+      
 
-      {/* Satisfaction Section */}
-      <div className="mb-8">
-        <div className="flex items-center gap-3 mb-2">
-          <span className="text-white text-lg">❓</span>
-          <h2 className="text-lg font-semibold text-white">Satisfaction</h2>
-          <div className="flex items-center gap-2">
-            <button
-              onClick={() => setShowSatisfactionDetails(!showSatisfactionDetails)}
-              className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
-                showSatisfactionDetails ? 'bg-blue-600' : 'bg-neutral-600'
-              }`}
-            >
-              <span
-                className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
-                  showSatisfactionDetails ? 'translate-x-6' : 'translate-x-1'
-                }`}
-              />
-            </button>
-            <span className="text-neutral-400 text-sm">Show Satisfaction Breakdowns</span>
-          </div>
-        </div>
-        <p className="text-neutral-400">
-          Awaiting product selection or requirements outside of Raw Resources.
-        </p>
-      </div>      {/* Bottom Section - Tasks and Notes */}
+    {/* Bottom Section - Tasks and Notes */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         {/* Tasks Section */}
         <div className="bg-neutral-800 border border-neutral-700 rounded-lg p-4">
@@ -663,25 +614,62 @@ export const FactorySection: FC<FactorySectionProps> = ({
           <div className="flex items-center gap-3">
             <Factory className="w-6 h-6 text-orange-400" />
             <h3 className="text-white font-semibold text-lg">Production Lines</h3>
-          </div>
-          <Button
-            onClick={() => setShowProductionSelector(!showProductionSelector)}
+          </div>          <Button
+            onClick={() => {
+              setFilterItemForProduction(undefined);
+              setShowProductionSelector(!showProductionSelector);
+            }}
             className="bg-orange-600 hover:bg-orange-700 text-white"
           >
             <Plus className="w-4 h-4 mr-2" />
             Add Production Line
           </Button>
-        </div>
-
-        {/* Production Selector */}
+        </div>        {/* Production Selector */}
         {showProductionSelector && (
           <div className="mb-6">
             <ItemRecipeSelector
               onSelectionComplete={handleAddProductionLine}
               className="mb-4"
+              filterByItemClass={filterItemForProduction}
             />
+            <Button
+              variant="outline"
+              onClick={() => {
+                setShowProductionSelector(false);
+                setFilterItemForProduction(undefined);
+              }}
+              className="mt-2"
+            >
+              Cancel
+            </Button>
           </div>
-        )}
+        )}        {/* Dependency Tracker */}
+        <div className="mb-6">
+          <DependencyTracker
+            currentFactoryId={id}
+            productionLines={Array.isArray(productionLines) ? productionLines : []}
+            onAddProductionLine={(ingredient) => {
+              // Set up the selector to show only recipes that produce this ingredient
+              setFilterItemForProduction(ingredient);
+              setShowProductionSelector(true);
+            }}
+            onImportFromFactory={(ingredient, factoryId) => {
+              // Refresh dependency tracker and imports list after import is created
+              loadProductionLines();
+            }}
+          />
+        </div>
+
+        {/* Imports List */}
+        <div className="mb-6">
+          <ImportsList
+            factoryId={id}
+            onImportDeleted={() => {
+              // Refresh dependency tracker when an import is deleted
+              loadProductionLines();
+            }}
+          />
+        </div>
 
         {/* Production Lines List */}
         {loadingProductionLines ? (
