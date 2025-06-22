@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { AlertTriangle, Plus, ArrowRight, Factory, Search, ExternalLink, RefreshCw, Clock, Play, Pause } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -58,14 +58,17 @@ export default function DependencyTracker({
   onImportFromFactory,
   autoRefreshInterval = 30000, // Default 30 seconds
   refreshTrigger
-}: DependencyTrackerProps) {
-  const [factories, setFactories] = useState<Factory[]>([]);
+}: DependencyTrackerProps) {  const [factories, setFactories] = useState<Factory[]>([]);
   const [missingIngredients, setMissingIngredients] = useState<MissingIngredient[]>([]);
   const [imports, setImports] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
-  const [expanded, setExpanded] = useState(false);  const [importing, setImporting] = useState<string | null>(null); // Track which import is in progress
+  const [expanded, setExpanded] = useState(false);
+  const [importing, setImporting] = useState<string | null>(null); // Track which import is in progress
   const [lastRefresh, setLastRefresh] = useState<Date>(new Date());
   const [isAutoRefreshEnabled, setIsAutoRefreshEnabled] = useState(true);
+  
+  // Use ref to track imports length without causing re-renders
+  const importsLengthRef = useRef(0);
 
   // Handle import from factory
   const handleImportFromFactory = async (ingredient: string, factoryId: string, requiredAmount: number) => {
@@ -112,20 +115,21 @@ export default function DependencyTracker({
   // Load existing imports for this factory
   const loadImports = async () => {
     try {
-      const response = await fetch(`/api/factories/${currentFactoryId}/imports`);
-      if (response.ok) {
+      const response = await fetch(`/api/factories/${currentFactoryId}/imports`);      if (response.ok) {
         const data = await response.json();
-        setImports(data.imports || []);
+        const newImports = data.imports || [];
+        setImports(newImports);
+        importsLengthRef.current = newImports.length; // Update ref
       } else {
         setImports([]);
+        importsLengthRef.current = 0; // Update ref
       }
     } catch (error) {
       console.error('Error loading imports:', error);
       setImports([]);
+      importsLengthRef.current = 0; // Update ref
     }
-  };
-
-  // Comprehensive refresh function
+  };  // Comprehensive refresh function
   const refreshDependencies = async () => {
     try {
       setLoading(true);
@@ -176,20 +180,20 @@ export default function DependencyTracker({
       setLastRefresh(new Date());
     } catch (error) {
       console.error('Error refreshing dependencies:', error);
-      setFactories([]);
-    } finally {
+      setFactories([]);    } finally {
       setLoading(false);
     }
-  };  // Load all factories to check for ingredient availability
+  };
+
+  // Load all factories to check for ingredient availability
   useEffect(() => {
     refreshDependencies();
-  }, [currentFactoryId]);
-  // Auto-refresh functionality with dynamic interval based on imports
+  }, [currentFactoryId]);  // Auto-refresh functionality with dynamic interval based on imports
   useEffect(() => {
     if (!isAutoRefreshEnabled) return;
 
-    // Refresh more frequently if there are active imports (they might be updated)
-    const hasImports = imports.length > 0;
+    // Use ref value to avoid dependency on imports.length
+    const hasImports = importsLengthRef.current > 0;
     const refreshInterval = hasImports ? Math.min(autoRefreshInterval, 15000) : autoRefreshInterval; // 15s max if imports exist
 
     if (refreshInterval <= 0) return;
@@ -199,10 +203,10 @@ export default function DependencyTracker({
     }, refreshInterval);
 
     return () => clearInterval(interval);
-  }, [isAutoRefreshEnabled, autoRefreshInterval, imports.length]);
-  // Refresh when production lines change
+  }, [isAutoRefreshEnabled, autoRefreshInterval]); // Removed imports.length dependency// Refresh when production lines change
   useEffect(() => {
-    if (factories.length > 0) {
+    // Only refresh if production lines exist (don't depend on factories.length to avoid circular deps)
+    if (productionLines.length > 0) {
       // Small delay to avoid too frequent updates
       const timeoutId = setTimeout(() => {
         refreshDependencies();
@@ -210,11 +214,9 @@ export default function DependencyTracker({
 
       return () => clearTimeout(timeoutId);
     }
-  }, [productionLines]);
-
-  // Refresh when trigger changes (for immediate updates)
+  }, [productionLines.length]);  // Refresh when trigger changes (for immediate updates)
   useEffect(() => {
-    if (refreshTrigger && factories.length > 0) {
+    if (refreshTrigger) {
       refreshDependencies();
     }
   }, [refreshTrigger]);

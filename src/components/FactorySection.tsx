@@ -1,13 +1,12 @@
 "use client";
-import { FC, useState, useEffect } from "react";
+import { FC, useState, useEffect, useMemo } from "react";
 import { Input } from "./ui/input";
 import { Button } from "./ui/button";
 import { 
   Pencil, 
   Save, 
   Loader2, 
-  ArrowUp, 
-  ArrowDown, 
+  ArrowUp,   ArrowDown, 
   Lock, 
   Trash2,
   Plus,
@@ -16,7 +15,8 @@ import {
   HelpCircle,
   Check,
   X,
-  Factory
+  Factory,
+  AlertTriangle
 } from "lucide-react";
 import { DeleteConfirmationDialog } from "./DeleteConfirmationDialog";
 import ItemRecipeSelector from "./ItemRecipeSelector";
@@ -70,6 +70,7 @@ interface FactorySectionProps {
   initialNotes?: Note[];
   onNameChange?: (id: string, newName: string) => void;
   onDelete?: (id: string) => void;
+  onStatusChange?: (id: string, status: {isSatisfied: boolean; missingCount: number}) => void;
 }
 
 export const FactorySection: FC<FactorySectionProps> = ({ 
@@ -78,8 +79,9 @@ export const FactorySection: FC<FactorySectionProps> = ({
   initialTasks = [],
   initialNotes = [],
   onNameChange,
-  onDelete
-}) => {  const [name, setName] = useState(initialName);
+  onDelete,
+  onStatusChange
+}) => {const [name, setName] = useState(initialName);
   const [editing, setEditing] = useState(false);
   const [isUpdating, setIsUpdating] = useState(false);
   const [showSatisfactionDetails, setShowSatisfactionDetails] = useState(false);
@@ -88,14 +90,18 @@ export const FactorySection: FC<FactorySectionProps> = ({
   const [tasks, setTasks] = useState<Task[]>(initialTasks);
   const [notes, setNotes] = useState<Note[]>(initialNotes);
   const [isAddingTask, setIsAddingTask] = useState(false);
-  const [isAddingNote, setIsAddingNote] = useState(false);
-  const [showDeleteDialog, setShowDeleteDialog] = useState(false);
+  const [isAddingNote, setIsAddingNote] = useState(false);  const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
-    // Production lines state
+  
+  // Production lines state
   const [productionLines, setProductionLines] = useState<ProductionLine[]>([]);
-  const [showProductionSelector, setShowProductionSelector] = useState(false);  const [loadingProductionLines, setLoadingProductionLines] = useState(false);  const [filterItemForProduction, setFilterItemForProduction] = useState<string | undefined>(undefined);  const [importsRefreshTrigger, setImportsRefreshTrigger] = useState(0);
+  const [showProductionSelector, setShowProductionSelector] = useState(false);
+  const [loadingProductionLines, setLoadingProductionLines] = useState(false);
+  const [filterItemForProduction, setFilterItemForProduction] = useState<string | undefined>(undefined);
+  const [importsRefreshTrigger, setImportsRefreshTrigger] = useState(0);
   const [dependencyRefreshTrigger, setDependencyRefreshTrigger] = useState(0);
   const [exportsRefreshTrigger, setExportsRefreshTrigger] = useState(0);
+  const [imports, setImports] = useState<Array<{itemClassName: string; requiredAmount: number}>>([]);
 
   // Load production lines
   const loadProductionLines = async () => {
@@ -110,6 +116,21 @@ export const FactorySection: FC<FactorySectionProps> = ({
       console.error('Error loading production lines:', error);
     } finally {
       setLoadingProductionLines(false);
+    }  };
+
+  // Load imports
+  const loadImports = async () => {
+    try {
+      const response = await fetch(`/api/factories/${id}/imports`);
+      if (response.ok) {
+        const data = await response.json();
+        setImports(data.imports || []);
+      } else {
+        setImports([]);
+      }
+    } catch (error) {
+      console.error('Error loading imports:', error);
+      setImports([]);
     }
   };
 
@@ -195,11 +216,79 @@ export const FactorySection: FC<FactorySectionProps> = ({
   useEffect(() => {
     setNotes(initialNotes);
   }, [initialNotes]);
-
   // Load production lines on mount
   useEffect(() => {
     loadProductionLines();
   }, [id]);
+  // Load imports on mount and when imports refresh trigger changes
+  useEffect(() => {
+    loadImports();  }, [id, importsRefreshTrigger]);
+
+  // Calculate available inputs from imports and local production (memoized)
+  const availableInputs = useMemo((): Record<string, number> => {
+    const inputs: Record<string, number> = {};
+
+    // Add imports
+    imports.forEach(imp => {
+      inputs[imp.itemClassName] = (inputs[imp.itemClassName] || 0) + imp.requiredAmount;
+    });
+
+    // Add local production (items produced by this factory's production lines)
+    productionLines.forEach(line => {
+      if (line.itemClassName) {
+        const totalOutput = line.targetQuantityPerMinute || 0;
+        inputs[line.itemClassName] = (inputs[line.itemClassName] || 0) + totalOutput;
+      }
+    });
+
+    return inputs;
+  }, [imports, productionLines]);
+  // Check if factory has unsatisfied dependencies
+  const checkFactoryStatus = () => {
+    const missingIngredients: Array<{item: string; needed: number; available: number}> = [];
+    
+    productionLines.forEach(line => {
+      if (!line.recipe?.ingredients) return;
+      
+      line.recipe.ingredients.forEach(ingredient => {
+        const buildingCount = line.buildingCount || 0;
+        const cycleTime = line.recipe?.time || 1;
+        const requiredPerMinute = (ingredient.amount * buildingCount * 60) / cycleTime;
+        const availableAmount = availableInputs[ingredient.item] || 0;
+        
+        if (requiredPerMinute > availableAmount) {
+          const existingMissing = missingIngredients.find(m => m.item === ingredient.item);
+          if (existingMissing) {
+            existingMissing.needed += requiredPerMinute;
+          } else {
+            missingIngredients.push({
+              item: ingredient.item,
+              needed: requiredPerMinute,
+              available: availableAmount
+            });
+          }
+        }
+      });
+    });
+      return {
+      isSatisfied: missingIngredients.length === 0,
+      missingCount: missingIngredients.length,
+      missingIngredients
+    };
+  };
+
+  // Memoize factory status calculation
+  const factoryStatus = useMemo(() => checkFactoryStatus(), [availableInputs, productionLines]);
+
+  // Notify parent of status changes
+  useEffect(() => {
+    if (onStatusChange) {
+      onStatusChange(id, {
+        isSatisfied: factoryStatus.isSatisfied,
+        missingCount: factoryStatus.missingCount
+      });
+    }
+  }, [id, factoryStatus.isSatisfied, factoryStatus.missingCount, onStatusChange]);
 
   const handleAddTask = async () => {
     if (!newTask.trim() || isAddingTask) return;
@@ -393,13 +482,29 @@ export const FactorySection: FC<FactorySectionProps> = ({
       setName(initialName);
       setEditing(false);
     }
-  };
-  return (
-    <section className="bg-neutral-900 border border-neutral-800 rounded-lg p-6 mt-8 w-full max-w-6xl mx-auto shadow-lg">
+  };  return (
+    <section className={`bg-neutral-900 border rounded-lg p-6 mt-8 w-full max-w-6xl mx-auto shadow-lg ${
+      factoryStatus.isSatisfied 
+        ? 'border-green-700 shadow-green-900/20' 
+        : 'border-red-700 shadow-red-900/20'
+    }`}>
       {/* Title Section with Action Buttons */}
       <div className="flex items-center justify-between mb-6">
         <div className="flex items-center gap-3">
-          <div className="text-white text-lg">🏭</div>
+          <div className="flex items-center gap-2">
+            <div className="text-white text-lg">🏭</div>
+            {/* Factory Status Indicator */}            <div className={`w-3 h-3 rounded-full ${
+              factoryStatus.isSatisfied 
+                ? 'bg-green-500 shadow-lg shadow-green-500/50' 
+                : 'bg-red-500 shadow-lg shadow-red-500/50 animate-pulse'
+            }`} 
+            title={factoryStatus.isSatisfied 
+              ? 'All dependencies satisfied' 
+              : `Missing: ${factoryStatus.missingIngredients.map(m => 
+                  `${m.item} (need ${m.needed.toFixed(1)}/min, have ${m.available.toFixed(1)}/min)`
+                ).join(', ')}`
+            } />
+          </div>
           {editing ? (
             <div className="flex items-center gap-2">
               <Input
@@ -436,9 +541,26 @@ export const FactorySection: FC<FactorySectionProps> = ({
                 className="text-neutral-400 hover:text-white"
               >
                 <Pencil className="w-4 h-4" />
-              </Button>
-            </h1>
+              </Button>            </h1>
           )}
+          
+          {/* Factory Status Summary */}
+          <div className="flex items-center gap-2 mt-2">
+            {factoryStatus.isSatisfied ? (
+              <span className="text-green-400 text-sm flex items-center gap-1">
+                <div className="w-2 h-2 bg-green-500 rounded-full"></div>
+                All dependencies satisfied
+              </span>
+            ) : (
+              <span className="text-red-400 text-sm flex items-center gap-1">
+                <AlertTriangle className="w-4 h-4" />
+                {factoryStatus.missingCount} missing dependencies
+                <span className="text-neutral-500">
+                  • {productionLines.length} production lines
+                </span>
+              </span>
+            )}
+          </div>
         </div>
           {/* Action Buttons */}
         <div className="flex gap-1">
@@ -697,12 +819,12 @@ export const FactorySection: FC<FactorySectionProps> = ({
             <p className="text-neutral-400">No production lines yet</p>
             <p className="text-neutral-500 text-sm">Add a production line to start planning your factory</p>
           </div>
-        ) : (
-          <div className="space-y-4">            {productionLines.map((line) => (
+        ) : (          <div className="space-y-4">            {productionLines.map((line) => (
               <ProductionLineCard
                 key={line._id}
                 productionLine={line}
                 factoryId={id}
+                availableInputs={availableInputs}
                 onUpdate={handleUpdateProductionLine}
                 onDelete={handleDeleteProductionLine}
               />

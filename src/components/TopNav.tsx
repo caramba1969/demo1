@@ -30,9 +30,19 @@ export const TopNav: FC = () => {
           >
             <LayoutDashboard className="w-5 h-5" /> Planner
           </Button>
-        </Link>        <Button variant="ghost" className="flex gap-1 text-neutral-200" aria-label="Graph (WIP)">
-          <BarChart2 className="w-5 h-5" /> Graph (WIP)
-        </Button>
+        </Link>        <Link href="/graph">
+          <Button 
+            variant="ghost" 
+            className={`flex gap-1 ${
+              pathname === '/graph' 
+                ? 'text-orange-400 bg-orange-500/10' 
+                : 'text-neutral-200 hover:text-orange-300 hover:bg-orange-500/10'
+            }`} 
+            aria-label="Graph"
+          >
+            <BarChart2 className="w-5 h-5" /> Graph
+          </Button>
+        </Link>
         <Link href="/recipes">
           <Button variant="ghost" className="flex gap-1 text-neutral-200" aria-label="Recipes">
             <BookOpen className="w-5 h-5" /> Recipes

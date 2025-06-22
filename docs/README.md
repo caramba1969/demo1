@@ -23,6 +23,12 @@ A comprehensive, modern factory planning application for the game Satisfactory, 
 ### Project Overview
 11. [11-project-status-and-roadmap.md](./11-project-status-and-roadmap.md) - Current Status, Completeness & Future Roadmap
 
+### Advanced Features (Latest)
+12. [12-authentication-implementation-complete.md](./12-authentication-implementation-complete.md) - Authentication System Implementation
+13. [13-dismissible-notification-system.md](./13-dismissible-notification-system.md) - Dismissible Notification System
+14. [14-recipes-database-page.md](./14-recipes-database-page.md) - Recipes Database Page
+15. [15-advanced-factory-management.md](./15-advanced-factory-management.md) - Advanced Factory Management Features
+
 ## Project Architecture
 
 ### Frontend
@@ -60,20 +66,36 @@ A comprehensive, modern factory planning application for the game Satisfactory, 
 - ✅ **Building & Power Calculations** - Automatic computation of required buildings and power consumption
 - ✅ **Admin Interface** - Data management tools for importing and maintaining game data
 
+### Authentication & Security
+- ✅ **Google OAuth Authentication** - Secure sign-in with NextAuth integration
+- ✅ **User Data Isolation** - Complete privacy with user-specific factories and production lines
+- ✅ **API Route Protection** - All endpoints secured with authentication middleware
+- ✅ **Session Management** - Persistent, secure user sessions with automatic refresh
+
+### Advanced Factory Management
+- ✅ **Dependency Tracking** - Intelligent analysis of missing ingredients with import suggestions
+- ✅ **Import/Export Management** - Create and manage supply chains between factories
+- ✅ **Factory Exports Display** - Visual representation of which factories are importing from each factory
+- ✅ **Real-time Capacity Monitoring** - Dynamic tracking of production capacity and requirements
+- ✅ **Duplicate Prevention** - Smart validation to prevent conflicting import relationships
+- ✅ **Multi-factory Coordination** - Plan and manage complex supply chains across multiple factories
+
 ### User Experience
 - ✅ **Responsive Design** - Fixed sidebar navigation with scrollable main content
 - ✅ **Collapsible Production Lines** - Space-efficient display with state persistence
 - ✅ **Visual Item Recognition** - Game-accurate item images for products and ingredients
 - ✅ **Human-readable Names** - Intelligent display of item names instead of class names
-- ✅ **Real-time Updates** - Instant feedback on production calculations
+- ✅ **Real-time Updates** - Instant feedback on production calculations and dependency changes
 - ✅ **Persistent UI State** - Remembers user preferences and interface states
+- ✅ **Dismissible Notifications** - User-friendly notification system with auto-dismiss
+- ✅ **Recipes Database Page** - Searchable, filterable recipe browser with detailed ingredient information
 
 ### Data Management
 - ✅ **MongoDB Integration** - Scalable document storage with proper indexing
 - ✅ **Type-safe APIs** - Full TypeScript coverage for backend operations
 - ✅ **Error Handling** - Comprehensive error management with user-friendly messages
 - ✅ **Data Validation** - Input validation and sanitization at all levels
-- ✅ Human-readable ingredient names in production lines
+- ✅ **Migration Tools** - Administrative tools for legacy data migration and user assignment
 
 ## Technology Stack
 

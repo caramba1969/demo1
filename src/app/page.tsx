@@ -13,12 +13,18 @@ interface Factory {
   notes: Array<{ id: string; text: string; createdAt: string }>;
 }
 
+interface FactoryStatus {
+  isSatisfied: boolean;
+  missingCount: number;
+}
+
 export default function Home() {
   const [factories, setFactories] = useState<Factory[]>([]);
   const [activeFactoryId, setActiveFactoryId] = useState<string | undefined>();
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [showWelcomeNotification, setShowWelcomeNotification] = useState(false);
+  const [factoryStatuses, setFactoryStatuses] = useState<Map<string, FactoryStatus>>(new Map());
   const { data: session, status } = useSession();
 
   // Check localStorage for welcome notification preference
@@ -142,7 +148,6 @@ export default function Home() {
       )
     );
   };
-
   const handleFactoryDelete = async (id: string) => {
     try {
       const response = await fetch("/api/factories", {
@@ -157,6 +162,13 @@ export default function Home() {
       
       setFactories(factories => factories.filter(factory => factory.id !== id));
       
+      // Clean up factory status
+      setFactoryStatuses(prev => {
+        const newMap = new Map(prev);
+        newMap.delete(id);
+        return newMap;
+      });
+      
       // If the deleted factory was active, select the first remaining factory
       if (activeFactoryId === id) {
         const remainingFactories = factories.filter(factory => factory.id !== id);
@@ -165,23 +177,27 @@ export default function Home() {
     } catch (err) {
       console.error("Error deleting factory:", err);
       setError("Failed to delete factory");
-    }  };
-
+    }
+  };
   const handleWelcomeDismiss = () => {
     setShowWelcomeNotification(false);
     localStorage.setItem('factoryplanner-welcome-dismissed', 'true');
   };
 
+  const handleFactoryStatusChange = (id: string, status: FactoryStatus) => {
+    setFactoryStatuses(prev => new Map(prev.set(id, status)));
+  };
+
   return (
-    <>
-      <Sidebar 
+    <>      <Sidebar 
         factories={factories}
         activeFactoryId={activeFactoryId}
         onAddFactory={handleAddFactory}
         onSelectFactory={handleSelectFactory}
         onDeleteFactory={handleFactoryDelete}
         onReorderFactories={handleReorderFactories}
-      />      <main className="ml-64 flex-1 overflow-y-auto h-[calc(100vh-3rem)]">        <div className="flex flex-col items-center p-4 md:p-8">
+        factoryStatuses={factoryStatuses}
+      /><main className="ml-64 flex-1 overflow-y-auto h-[calc(100vh-3rem)]">        <div className="flex flex-col items-center p-4 md:p-8">
           {/* Welcome notification for authenticated users */}
           {session && showWelcomeNotification && (
             <div className="w-full max-w-4xl mb-6">              <DismissibleNotification
@@ -244,8 +260,7 @@ export default function Home() {
           ) : activeFactoryId ? (
             (() => {
               const activeFactory = factories.find(f => f.id === activeFactoryId);
-              return activeFactory ? (
-                <FactorySection 
+              return activeFactory ? (                <FactorySection 
                   key={activeFactory.id} 
                   id={activeFactory.id}
                   initialName={activeFactory.name} 
@@ -253,6 +268,7 @@ export default function Home() {
                   initialNotes={activeFactory.notes}
                   onNameChange={handleFactoryNameChange}
                   onDelete={handleFactoryDelete}
+                  onStatusChange={handleFactoryStatusChange}
                 />
               ) : (
                 <div className="text-neutral-400 mt-16">Factory not found.</div>

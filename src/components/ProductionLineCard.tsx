@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { Factory, Zap, Clock, Trash2, Edit3, Package, ChevronDown, ChevronUp } from 'lucide-react';
+import { Factory, Zap, Clock, Trash2, Edit3, Package, ChevronDown, ChevronUp, AlertTriangle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 
@@ -43,6 +43,7 @@ interface ProductionLineCardProps {
   onDelete: (id: string) => Promise<void>;
   className?: string;
   factoryId?: string; // Add factoryId to load exports
+  availableInputs?: Record<string, number>; // Available input amounts per ingredient item class
 }
 
 export default function ProductionLineCard({ 
@@ -50,7 +51,8 @@ export default function ProductionLineCard({
   onUpdate, 
   onDelete, 
   className,
-  factoryId
+  factoryId,
+  availableInputs = {}
 }: ProductionLineCardProps) {
   const [isEditing, setIsEditing] = useState(false);
   const [editTarget, setEditTarget] = useState(productionLine.targetQuantityPerMinute);
@@ -338,38 +340,60 @@ export default function ProductionLineCard({
                 )}
               </p>
             </div>
-          </div>{productionLine.recipe.ingredients.length > 0 && (
+          </div>          {productionLine.recipe.ingredients.length > 0 && (
             <div className="mt-3 pt-3 border-t border-slate-700">
               <p className="text-slate-400 text-xs mb-2">Ingredients per cycle:</p>              <div className="flex flex-wrap gap-2">
                 {productionLine.recipe.ingredients.map((ingredient, index) => {
                   // Calculate total ingredient consumption based on building count
                   const buildingCount = productionLine.buildingCount || 0;
                   const cycleTime = productionLine.recipe?.time || 1;
-                  const ingredientPerMinute = (ingredient.amount * buildingCount * 60) / cycleTime;
+                  const ingredientPerMinute = (ingredient.amount * buildingCount * 60) / cycleTime;                  // Check if this ingredient has sufficient input (from imports or local production)
+                  const availableAmount = availableInputs[ingredient.item] || 0;
+                  const isInsufficient = ingredientPerMinute > availableAmount;
+                  const deficit = Math.max(0, ingredientPerMinute - availableAmount);
                   
                   return (
-                    <span
-                      key={index}
-                      className="px-2 py-1 bg-slate-700 rounded text-xs text-slate-300 flex items-center gap-1"
-                    >                      {ingredient.item && getItemImageUrl(ingredient.item) && (
-                        <img 
-                          src={getItemImageUrl(ingredient.item)!} 
-                          alt={ingredient.name || ingredient.item} 
-                          className="w-4 h-4 object-contain"
-                          onError={(e) => {
-                            e.currentTarget.style.display = 'none';
-                          }}
-                        />
-                      )}
-                      <span>
-                        {ingredient.amount}x {ingredient.name || ingredient.item}
-                        {buildingCount > 0 && (
-                          <span className="text-blue-400 ml-1">
-                            ({ingredientPerMinute.toFixed(1)}/min)
-                          </span>
+                    <div key={index} className="flex flex-col gap-1">
+                      <span
+                        className={`px-2 py-1 rounded text-xs flex items-center gap-1 ${
+                          isInsufficient 
+                            ? 'bg-red-900/30 border border-red-700/50 text-red-200' 
+                            : 'bg-slate-700 text-slate-300'
+                        }`}
+                      >                        {ingredient.item && getItemImageUrl(ingredient.item) && (
+                          <img 
+                            src={getItemImageUrl(ingredient.item)!} 
+                            alt={ingredient.name || ingredient.item} 
+                            className="w-4 h-4 object-contain"
+                            onError={(e) => {
+                              e.currentTarget.style.display = 'none';
+                            }}
+                          />
+                        )}                        <span>
+                          {ingredient.amount}x {ingredient.name || ingredient.item}                          {buildingCount > 0 && (
+                            <span className={`ml-1 font-mono ${isInsufficient ? 'text-red-300' : 'text-blue-400'}`}>
+                              (needs {ingredientPerMinute.toFixed(1)}/min)
+                            </span>
+                          )}
+                          {buildingCount > 0 && availableAmount > 0 && (
+                            <span className="ml-1 text-green-400 font-mono text-xs">
+                              [have: {availableAmount.toFixed(1)}/min]
+                            </span>
+                          )}
+                        </span>                        {isInsufficient && deficit > 0 && (
+                          <AlertTriangle className="w-3 h-3 text-red-400 ml-1" />
                         )}
-                      </span>
-                    </span>
+                      </span>                      {/* Show shortage information when insufficient */}
+                      {isInsufficient && deficit > 0 && (
+                        <span className="text-xs text-red-400 px-2 flex items-center gap-1">
+                          <AlertTriangle className="w-3 h-3" />
+                          {availableAmount > 0 
+                            ? `Short ${deficit.toFixed(1)}/min (have ${availableAmount.toFixed(1)}/min)`
+                            : `Missing ${deficit.toFixed(1)}/min input`
+                          }
+                        </span>
+                      )}
+                    </div>
                   );
                 })}
               </div>
