@@ -23,6 +23,7 @@ import ItemRecipeSelector from "./ItemRecipeSelector";
 import ProductionLineCard from "./ProductionLineCard";
 import DependencyTracker from "./DependencyTracker";
 import ImportsList from "./ImportsList";
+import ExportsList from "./ExportsList";
 
 interface Task {
   id: string;
@@ -92,9 +93,11 @@ export const FactorySection: FC<FactorySectionProps> = ({
   const [isDeleting, setIsDeleting] = useState(false);
     // Production lines state
   const [productionLines, setProductionLines] = useState<ProductionLine[]>([]);
-  const [showProductionSelector, setShowProductionSelector] = useState(false);
-  const [loadingProductionLines, setLoadingProductionLines] = useState(false);
-  const [filterItemForProduction, setFilterItemForProduction] = useState<string | undefined>(undefined);// Load production lines
+  const [showProductionSelector, setShowProductionSelector] = useState(false);  const [loadingProductionLines, setLoadingProductionLines] = useState(false);  const [filterItemForProduction, setFilterItemForProduction] = useState<string | undefined>(undefined);  const [importsRefreshTrigger, setImportsRefreshTrigger] = useState(0);
+  const [dependencyRefreshTrigger, setDependencyRefreshTrigger] = useState(0);
+  const [exportsRefreshTrigger, setExportsRefreshTrigger] = useState(0);
+
+  // Load production lines
   const loadProductionLines = async () => {
     try {
       setLoadingProductionLines(true);
@@ -132,13 +135,15 @@ export const FactorySection: FC<FactorySectionProps> = ({
       if (!response.ok) throw new Error('Failed to add production line');      await loadProductionLines(); // Refresh the list
       setShowProductionSelector(false);
       setFilterItemForProduction(undefined); // Clear the filter
-      setFilterItemForProduction(undefined);
+      
+      // Trigger dependency tracker refresh by updating triggers
+      setImportsRefreshTrigger(prev => prev + 1);
+      setDependencyRefreshTrigger(prev => prev + 1);
+      setExportsRefreshTrigger(prev => prev + 1);
     } catch (error) {
       console.error('Error adding production line:', error);
     }
-  };
-
-  // Update production line
+  };  // Update production line
   const handleUpdateProductionLine = async (lineId: string, updates: Partial<ProductionLine>) => {
     try {
       const response = await fetch(`/api/factories/${id}/production-lines/${lineId}`, {
@@ -149,14 +154,16 @@ export const FactorySection: FC<FactorySectionProps> = ({
         body: JSON.stringify(updates),
       });
 
-      if (!response.ok) throw new Error('Failed to update production line');
-
-      await loadProductionLines(); // Refresh the list
+      if (!response.ok) throw new Error('Failed to update production line');      await loadProductionLines(); // Refresh the list
+      
+      // Trigger dependency tracker refresh by updating triggers
+      setImportsRefreshTrigger(prev => prev + 1);
+      setDependencyRefreshTrigger(prev => prev + 1);
+      setExportsRefreshTrigger(prev => prev + 1);
     } catch (error) {
       console.error('Error updating production line:', error);
     }
   };
-
   // Delete production line
   const handleDeleteProductionLine = async (lineId: string) => {
     try {
@@ -167,6 +174,10 @@ export const FactorySection: FC<FactorySectionProps> = ({
       if (!response.ok) throw new Error('Failed to delete production line');
 
       await loadProductionLines(); // Refresh the list
+        // Trigger dependency tracker refresh by updating triggers
+      setImportsRefreshTrigger(prev => prev + 1);
+      setDependencyRefreshTrigger(prev => prev + 1);
+      setExportsRefreshTrigger(prev => prev + 1);
     } catch (error) {
       console.error('Error deleting production line:', error);
     }
@@ -644,30 +655,33 @@ export const FactorySection: FC<FactorySectionProps> = ({
             </Button>
           </div>
         )}        {/* Dependency Tracker */}
-        <div className="mb-6">
-          <DependencyTracker
+        <div className="mb-6">          <DependencyTracker
             currentFactoryId={id}
             productionLines={Array.isArray(productionLines) ? productionLines : []}
-            onAddProductionLine={(ingredient) => {
+            refreshTrigger={dependencyRefreshTrigger}            onAddProductionLine={(ingredient: string) => {
               // Set up the selector to show only recipes that produce this ingredient
               setFilterItemForProduction(ingredient);
               setShowProductionSelector(true);
-            }}
-            onImportFromFactory={(ingredient, factoryId) => {
+            }}onImportFromFactory={(ingredient: string, factoryId: string) => {
               // Refresh dependency tracker and imports list after import is created
               loadProductionLines();
+              setImportsRefreshTrigger(prev => prev + 1); // Trigger imports list refresh
             }}
           />
-        </div>
-
-        {/* Imports List */}
-        <div className="mb-6">
-          <ImportsList
+        </div>        {/* Imports List */}
+        <div className="mb-6">          <ImportsList
             factoryId={id}
+            refreshTrigger={importsRefreshTrigger}
             onImportDeleted={() => {
               // Refresh dependency tracker when an import is deleted
               loadProductionLines();
             }}
+          />
+        </div>        {/* Exports List */}
+        <div className="mb-6">
+          <ExportsList
+            factoryId={id}
+            refreshTrigger={exportsRefreshTrigger}
           />
         </div>
 
@@ -684,11 +698,11 @@ export const FactorySection: FC<FactorySectionProps> = ({
             <p className="text-neutral-500 text-sm">Add a production line to start planning your factory</p>
           </div>
         ) : (
-          <div className="space-y-4">
-            {productionLines.map((line) => (
+          <div className="space-y-4">            {productionLines.map((line) => (
               <ProductionLineCard
                 key={line._id}
                 productionLine={line}
+                factoryId={id}
                 onUpdate={handleUpdateProductionLine}
                 onDelete={handleDeleteProductionLine}
               />

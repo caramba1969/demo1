@@ -31,27 +31,39 @@ export async function POST(
     await dbConnect();
     const factoryId = params.id;
     const body = await request.json();
-    const { sourceFactoryId, itemClassName, requiredAmount } = body;
-
-    // Validate input
+    const { sourceFactoryId, itemClassName, requiredAmount } = body;    // Validate input
     if (!sourceFactoryId || !itemClassName || !requiredAmount) {
       return NextResponse.json(
         { error: 'Missing required fields: sourceFactoryId, itemClassName, requiredAmount' },
         { status: 400 }
       );
-    }
-
-    // Create import record
-    const factoryImport = new FactoryImport({
+    }// Check if an import already exists for this item between these factories
+    const existingImport = await FactoryImport.findOne({
       targetFactoryId: factoryId,
       sourceFactoryId,
       itemClassName,
-      requiredAmount,
       userId: session.user.id,
       active: true
     });
 
-    await factoryImport.save();
+    let factoryImport;
+    
+    if (existingImport) {
+      // Update existing import amount
+      existingImport.requiredAmount = requiredAmount;
+      factoryImport = await existingImport.save();
+    } else {
+      // Create new import record
+      factoryImport = new FactoryImport({
+        targetFactoryId: factoryId,
+        sourceFactoryId,
+        itemClassName,
+        requiredAmount,
+        userId: session.user.id,
+        active: true
+      });
+      await factoryImport.save();
+    }
 
     return NextResponse.json({
       success: true,

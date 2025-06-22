@@ -42,19 +42,22 @@ interface ProductionLineCardProps {
   onUpdate: (id: string, updates: Partial<ProductionLine>) => Promise<void>;
   onDelete: (id: string) => Promise<void>;
   className?: string;
+  factoryId?: string; // Add factoryId to load exports
 }
 
 export default function ProductionLineCard({ 
   productionLine, 
   onUpdate, 
   onDelete, 
-  className = '' 
+  className,
+  factoryId
 }: ProductionLineCardProps) {
   const [isEditing, setIsEditing] = useState(false);
   const [editTarget, setEditTarget] = useState(productionLine.targetQuantityPerMinute);
   const [editNotes, setEditNotes] = useState(productionLine.notes || '');
   const [loading, setLoading] = useState(false);
   const [isCollapsed, setIsCollapsed] = useState(false);
+  const [exports, setExports] = useState<Array<{requiredAmount: number; targetFactoryId: {name: string}}>>([]);
 
   // Load collapse state from localStorage on mount
   useEffect(() => {
@@ -63,11 +66,30 @@ export default function ProductionLineCard({
       setIsCollapsed(JSON.parse(savedState));
     }
   }, [productionLine._id]);
-
   // Save collapse state to localStorage when it changes
   useEffect(() => {
     localStorage.setItem(`production-line-${productionLine._id}-collapsed`, JSON.stringify(isCollapsed));
   }, [isCollapsed, productionLine._id]);
+
+  // Load exports for this production line
+  useEffect(() => {
+    const loadExports = async () => {
+      if (!factoryId) return;
+      
+      try {
+        // Get all exports from this factory for this specific item
+        const response = await fetch(`/api/factories/${factoryId}/exports?itemClassName=${productionLine.itemClassName}`);
+        if (response.ok) {
+          const data = await response.json();
+          setExports(data.exports || []);
+        }
+      } catch (error) {
+        console.error('Error loading exports:', error);
+      }
+    };
+
+    loadExports();
+  }, [factoryId, productionLine.itemClassName]);
 
   const toggleCollapse = () => {
     setIsCollapsed(!isCollapsed);
@@ -113,9 +135,14 @@ export default function ProductionLineCard({
       }
     }
   };
-
   const efficiency = productionLine.efficiency || 100;
-  const actualOutput = (productionLine.actualQuantityPerMinute || 0) * (efficiency / 100);
+  const totalOutput = (productionLine.targetQuantityPerMinute || 0) * (efficiency / 100);
+  
+  // Calculate total exports for this item
+  const totalExports = exports.reduce((sum, exp) => sum + exp.requiredAmount, 0);
+  
+  // Net output is total production minus exports
+  const actualOutput = Math.max(0, totalOutput - totalExports);
 
   return (
     <div className={`bg-slate-900 border border-slate-700 rounded-lg p-6 ${className} ${
@@ -381,11 +408,17 @@ export default function ProductionLineCard({
               <Factory className="w-4 h-4 text-blue-400" />
               <span className="text-slate-400">Buildings:</span>
               <span className="text-blue-400 font-medium">{productionLine.buildingCount || 0}</span>
-            </div>
-            <div className="flex items-center gap-2">
+            </div>            <div className="flex items-center gap-2">
               <Package className="w-4 h-4 text-orange-400" />
               <span className="text-slate-400">Produces:</span>
-              <span className="text-orange-400 font-medium">{actualOutput.toFixed(1)}/min</span>
+              <span className="text-orange-400 font-medium">
+                {actualOutput.toFixed(1)}/min
+                {totalExports > 0 && (
+                  <span className="text-xs text-slate-400 ml-1">
+                    (net: {totalOutput.toFixed(1)} - {totalExports.toFixed(1)} exports)
+                  </span>
+                )}
+              </span>
             </div>
           </div>
           <div className="flex items-center gap-2">

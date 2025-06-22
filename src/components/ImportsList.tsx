@@ -18,34 +18,32 @@ interface FactoryImport {
 interface ImportsListProps {
   factoryId: string;
   onImportDeleted?: () => void;
+  refreshTrigger?: number; // Add a trigger to force refresh
 }
 
-export default function ImportsList({ factoryId, onImportDeleted }: ImportsListProps) {
+export default function ImportsList({ factoryId, onImportDeleted, refreshTrigger }: ImportsListProps) {
   const [imports, setImports] = useState<FactoryImport[]>([]);
   const [loading, setLoading] = useState(false);
-  const [deleting, setDeleting] = useState<string | null>(null);
-
-  // Load imports for this factory
-  useEffect(() => {
-    const loadImports = async () => {
-      try {
-        setLoading(true);
-        const response = await fetch(`/api/factories/${factoryId}/imports`);
-        if (!response.ok) throw new Error('Failed to fetch imports');
-        
+  const [deleting, setDeleting] = useState<string | null>(null);  // Load imports for this factory
+  const loadImports = async () => {
+    try {
+      setLoading(true);
+      const response = await fetch(`/api/factories/${factoryId}/imports`);
+      if (!response.ok) throw new Error('Failed to fetch imports');
         const data = await response.json();
-        setImports(data.imports || []);
-      } catch (error) {
-        console.error('Error loading imports:', error);
-      } finally {
-        setLoading(false);
-      }
-    };
+      setImports(data.imports || []);
+    } catch (error) {
+      console.error('Error loading imports:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
 
+  useEffect(() => {
     if (factoryId) {
       loadImports();
     }
-  }, [factoryId]);
+  }, [factoryId, refreshTrigger]); // Add refreshTrigger to dependencies
 
   // Delete an import
   const handleDeleteImport = async (importId: string) => {
