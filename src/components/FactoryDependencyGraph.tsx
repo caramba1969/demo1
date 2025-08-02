@@ -124,7 +124,7 @@ export default function FactoryDependencyGraph({ factories }: FactoryDependencyG
     const zoom = d3.zoom<SVGSVGElement, unknown>()
       .scaleExtent([0.1, 4])
       .on('zoom', (event: d3.D3ZoomEvent<SVGSVGElement, unknown>) => {
-        container.attr('transform', event.transform);
+        container.attr('transform', event.transform.toString());
       });
 
     svg.call(zoom);    // Create simulation
@@ -192,12 +192,13 @@ export default function FactoryDependencyGraph({ factories }: FactoryDependencyG
       .attr('font-weight', 'bold')
       .text((d: GraphLink) => `${d.itemName}: ${d.amount.toFixed(1)}/min`);    // Position link label backgrounds
     linkLabels.selectAll('.link-label-bg')
-      .each(function(this: SVGRectElement) {
-        const parentNode = this.parentNode as SVGGElement;
+      .each(function() {
+        const rectElement = this as SVGRectElement;
+        const parentNode = rectElement.parentNode as SVGGElement;
         const textElement = d3.select(parentNode).select('.link-label-text').node() as SVGTextElement;
         if (textElement) {
           const bbox = textElement.getBBox();
-          d3.select(this)
+          d3.select(rectElement)
             .attr('x', bbox.x - 4)
             .attr('y', bbox.y - 2)
             .attr('width', bbox.width + 8)

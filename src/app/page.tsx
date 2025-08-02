@@ -1,5 +1,5 @@
 "use client";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useSession } from "next-auth/react";
 import { Sidebar } from "../components/Sidebar";
 import { FactorySection } from "../components/FactorySection";
@@ -184,9 +184,9 @@ export default function Home() {
     localStorage.setItem('factoryplanner-welcome-dismissed', 'true');
   };
 
-  const handleFactoryStatusChange = (id: string, status: FactoryStatus) => {
+  const handleFactoryStatusChange = useCallback((id: string, status: FactoryStatus) => {
     setFactoryStatuses(prev => new Map(prev.set(id, status)));
-  };
+  }, []);
 
   return (
     <>      <Sidebar 

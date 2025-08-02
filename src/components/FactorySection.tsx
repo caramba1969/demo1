@@ -1,5 +1,5 @@
 "use client";
-import { FC, useState, useEffect, useMemo } from "react";
+import { FC, useState, useEffect, useMemo, useCallback } from "react";
 import { Input } from "./ui/input";
 import { Button } from "./ui/button";
 import { 
@@ -104,7 +104,7 @@ export const FactorySection: FC<FactorySectionProps> = ({
   const [imports, setImports] = useState<Array<{itemClassName: string; requiredAmount: number}>>([]);
 
   // Load production lines
-  const loadProductionLines = async () => {
+  const loadProductionLines = useCallback(async () => {
     try {
       setLoadingProductionLines(true);
       const response = await fetch(`/api/factories/${id}/production-lines`);
@@ -116,10 +116,11 @@ export const FactorySection: FC<FactorySectionProps> = ({
       console.error('Error loading production lines:', error);
     } finally {
       setLoadingProductionLines(false);
-    }  };
+    }
+  }, [id]);
 
   // Load imports
-  const loadImports = async () => {
+  const loadImports = useCallback(async () => {
     try {
       const response = await fetch(`/api/factories/${id}/imports`);
       if (response.ok) {
@@ -132,7 +133,7 @@ export const FactorySection: FC<FactorySectionProps> = ({
       console.error('Error loading imports:', error);
       setImports([]);
     }
-  };
+  }, [id]);
 
   // Add production line
   const handleAddProductionLine = async (data: {
@@ -219,10 +220,11 @@ export const FactorySection: FC<FactorySectionProps> = ({
   // Load production lines on mount
   useEffect(() => {
     loadProductionLines();
-  }, [id]);
+  }, [loadProductionLines]);
   // Load imports on mount and when imports refresh trigger changes
   useEffect(() => {
-    loadImports();  }, [id, importsRefreshTrigger]);
+    loadImports();
+  }, [loadImports, importsRefreshTrigger]);
 
   // Calculate available inputs from imports and local production (memoized)
   const availableInputs = useMemo((): Record<string, number> => {
@@ -288,7 +290,7 @@ export const FactorySection: FC<FactorySectionProps> = ({
         missingCount: factoryStatus.missingCount
       });
     }
-  }, [id, factoryStatus.isSatisfied, factoryStatus.missingCount, onStatusChange]);
+  }, [id, factoryStatus.isSatisfied, factoryStatus.missingCount]);
 
   const handleAddTask = async () => {
     if (!newTask.trim() || isAddingTask) return;
