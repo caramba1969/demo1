@@ -3,38 +3,62 @@
 import { useState } from 'react';
 import { useSession } from 'next-auth/react';
 import { Button } from '@/components/ui/button';
+import { ErrorNotification } from '@/components/ui/error-notification';
+import { useErrorHandler, UserError, handleFetchError } from '@/lib/errors';
 
 export default function TestPage() {
   const { data: session } = useSession();
   const [result, setResult] = useState<any>(null);
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<UserError | null>(null);
+  const { handleError } = useErrorHandler();
 
   const testFactoryCreation = async () => {
     setLoading(true);
+    setError(null);
+    setResult(null);
     try {
       const response = await fetch('/api/test/factory-creation', {
         method: 'POST',
       });
+      
+      if (!response.ok) {
+        const userError = await handleFetchError(response);
+        setError(userError);
+        return;
+      }
+      
       const data = await response.json();
       setResult(data);
-    } catch (error) {
-      setResult({ error: 'Test failed' });
+    } catch (err) {
+      const userError = handleError(err);
+      setError(userError);
     }
     setLoading(false);
   };
 
   const testRealFactoryCreation = async () => {
     setLoading(true);
+    setError(null);
+    setResult(null);
     try {
       const response = await fetch('/api/factories', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ name: 'Real Test Factory' })
       });
+      
+      if (!response.ok) {
+        const userError = await handleFetchError(response);
+        setError(userError);
+        return;
+      }
+      
       const data = await response.json();
       setResult({ type: 'real', ...data });
-    } catch (error) {
-      setResult({ error: 'Real factory creation failed' });
+    } catch (err) {
+      const userError = handleError(err);
+      setError(userError);
     }
     setLoading(false);
   };
@@ -70,10 +94,19 @@ export default function TestPage() {
         </Button>
       </div>
 
+      {error && (
+        <div className="mb-6">
+          <ErrorNotification 
+            error={error} 
+            onDismiss={() => setError(null)}
+          />
+        </div>
+      )}
+
       {result && (
-        <div className={`p-4 rounded ${result.error ? 'bg-red-100' : 'bg-green-100'}`}>
-          <h3 className="font-bold mb-2">Result:</h3>
-          <pre className="text-sm overflow-auto">{JSON.stringify(result, null, 2)}</pre>
+        <div className="p-4 rounded bg-green-100 border border-green-200">
+          <h3 className="font-bold mb-2 text-green-800">Success:</h3>
+          <pre className="text-sm overflow-auto text-green-700">{JSON.stringify(result, null, 2)}</pre>
         </div>
       )}
     </div>

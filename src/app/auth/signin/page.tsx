@@ -3,6 +3,8 @@ import { useEffect, useState } from "react";
 import { getProviders, signIn, useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
+import { ErrorNotification } from "@/components/ui/error-notification";
+import { useErrorHandler, UserError } from "@/lib/errors";
 import { Github, Loader2 } from "lucide-react";
 import Image from "next/image";
 
@@ -10,12 +12,19 @@ export default function SignInPage() {
   const [providers, setProviders] = useState<any>(null);
   const [isSignUp, setIsSignUp] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState<UserError | null>(null);
   const { data: session, status } = useSession();
+  const { handleError } = useErrorHandler();
   const router = useRouter();
 
   useEffect(() => {
-    getProviders().then((providers) => setProviders(providers));
-  }, []);
+    getProviders()
+      .then((providers) => setProviders(providers))
+      .catch((err) => {
+        const userError = handleError(err);
+        setError(userError);
+      });
+  }, [handleError]);
 
   // Redirect if already logged in
   useEffect(() => {
@@ -26,13 +35,28 @@ export default function SignInPage() {
 
   const handleSignIn = async (providerId: string) => {
     setIsLoading(true);
+    setError(null);
     try {
-      await signIn(providerId, { 
+      const result = await signIn(providerId, { 
         callbackUrl: "/",
-        redirect: true 
+        redirect: false 
       });
-    } catch (error) {
-      console.error("Sign in error:", error);
+      
+      if (result?.error) {
+        const userError = handleError({
+          message: result.error === 'OAuthCallback' 
+            ? 'Authentication was cancelled or failed. Please try again.'
+            : `Authentication failed: ${result.error}`
+        });
+        setError(userError);
+        setIsLoading(false);
+      } else if (result?.url) {
+        // Successful authentication, redirect
+        window.location.href = result.url;
+      }
+    } catch (err) {
+      const userError = handleError(err);
+      setError(userError);
       setIsLoading(false);
     }
   };
@@ -85,7 +109,17 @@ export default function SignInPage() {
               : "Sign in to access your Satisfactory factory planning dashboard"
             }
           </p>
-        </div>        <div className="flex flex-col gap-3">
+        </div>        
+        {error && (
+          <div className="mb-6">
+            <ErrorNotification 
+              error={error} 
+              onDismiss={() => setError(null)}
+            />
+          </div>
+        )}
+
+        <div className="flex flex-col gap-3">
           {providers &&
             Object.values(providers).map((provider: any) => (
               <Button

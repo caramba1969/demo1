@@ -57,7 +57,7 @@ export async function GET(request: NextRequest) {
   } catch (error) {
     console.error('Error fetching items:', error);
     return NextResponse.json(
-      { error: 'Failed to fetch items' },
+      { error: 'Unable to load items. Please try refreshing the page.' },
       { status: 500 }
     );
   }
@@ -78,13 +78,13 @@ export async function POST(request: NextRequest) {
     
     if (error.code === 11000) {
       return NextResponse.json(
-        { error: 'Item with this className or slug already exists' },
+        { error: 'An item with this name already exists. Please choose a different name.' },
         { status: 409 }
       );
     }
     
     return NextResponse.json(
-      { error: 'Failed to create item' },
+      { error: 'Unable to create item. Please check your input and try again.' },
       { status: 500 }
     );
   }

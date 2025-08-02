@@ -46,7 +46,7 @@ export async function GET(req: NextRequest) {
   } catch (error) {
     console.error('Error fetching factories:', error);
     return NextResponse.json(
-      { error: 'Failed to fetch factories' },
+      { error: 'Unable to load your factories at this time. Please try refreshing the page.' },
       { status: 500 }
     );
   }
@@ -94,7 +94,7 @@ export async function POST(req: NextRequest) {
   } catch (error) {
     console.error('Error creating factory:', error);
     return NextResponse.json(
-      { error: 'Failed to create factory', details: error },
+      { error: 'Unable to create factory. Please check your input and try again.' },
       { status: 500 }
     );
   }
@@ -142,7 +142,7 @@ export async function PATCH(req: NextRequest) {
   } catch (err) {
     console.error("Error updating factory:", err);
     return NextResponse.json(
-      { error: "Failed to update factory" },
+      { error: "Unable to update factory. Please try again." },
       { status: 500 }
     );
   }
@@ -185,7 +185,7 @@ export async function DELETE(req: NextRequest) {
   } catch (err) {
     console.error("Error deleting factory:", err);
     return NextResponse.json(
-      { error: "Failed to delete factory" },
+      { error: "Unable to delete factory. Please try again." },
       { status: 500 }
     );
   }
