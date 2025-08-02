@@ -20,6 +20,7 @@ import {
 } from "lucide-react";
 import { DeleteConfirmationDialog } from "./DeleteConfirmationDialog";
 import ItemRecipeSelector from "./ItemRecipeSelector";
+import EnhancedItemRecipeSelector from "./EnhancedItemRecipeSelector";
 import ProductionLineCard from "./ProductionLineCard";
 import DependencyTracker from "./DependencyTracker";
 import ImportsList from "./ImportsList";
@@ -138,23 +139,37 @@ export const FactorySection: FC<FactorySectionProps> = ({
   // Add production line
   const handleAddProductionLine = async (data: {
     item: any;
-    recipe: any;
+    recipe?: any;
+    extraction?: any;
     targetQuantityPerMinute: number;
+    isExtraction: boolean;
   }) => {
     try {
+      const requestBody = {
+        itemClassName: data.item.className,
+        targetQuantityPerMinute: data.targetQuantityPerMinute,
+        ...(data.isExtraction 
+          ? { 
+              recipeClassName: 'EXTRACTION', // Special marker for extractions
+              extractionData: data.extraction 
+            }
+          : { 
+              recipeClassName: data.recipe.className 
+            }
+        )
+      };
+
       const response = await fetch(`/api/factories/${id}/production-lines`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({
-          itemClassName: data.item.className,
-          recipeClassName: data.recipe.className,
-          targetQuantityPerMinute: data.targetQuantityPerMinute,
-        }),
+        body: JSON.stringify(requestBody),
       });
 
-      if (!response.ok) throw new Error('Failed to add production line');      await loadProductionLines(); // Refresh the list
+      if (!response.ok) throw new Error('Failed to add production line');
+
+      await loadProductionLines(); // Refresh the list
       setShowProductionSelector(false);
       setFilterItemForProduction(undefined); // Clear the filter
       
@@ -762,7 +777,7 @@ export const FactorySection: FC<FactorySectionProps> = ({
         </div>        {/* Production Selector */}
         {showProductionSelector && (
           <div className="mb-6">
-            <ItemRecipeSelector
+            <EnhancedItemRecipeSelector
               onSelectionComplete={handleAddProductionLine}
               className="mb-4"
               filterByItemClass={filterItemForProduction}

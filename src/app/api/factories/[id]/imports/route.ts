@@ -91,7 +91,7 @@ export async function GET(
     }
 
     await dbConnect();
-    const factoryId = params.id;
+    const factoryId = (await params).id;
 
     // Get all imports for this factory with source factory details
     const imports = await FactoryImport.find({

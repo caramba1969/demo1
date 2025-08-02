@@ -25,6 +25,12 @@ interface Factory {
   id: string;
   name: string;
   order?: number;
+  locationId?: {
+    _id: string;
+    name: string;
+    color: string;
+    icon: string;
+  };
   tasks: Array<{ id: string; text: string; completed: boolean; createdAt: string }>;
   notes: Array<{ id: string; text: string; createdAt: string }>;
 }
@@ -87,6 +93,31 @@ export const Sidebar: FC<SidebarProps> = ({
         return status && !status.isSatisfied;
       })
     : factories;
+
+  // Group factories by location
+  const groupedFactories = () => {
+    const groups: { [key: string]: { location?: { _id: string; name: string; color: string; icon: string }; factories: Factory[] } } = {};
+    
+    filteredFactories.forEach(factory => {
+      const locationKey = factory.locationId?._id || 'unassigned';
+      if (!groups[locationKey]) {
+        groups[locationKey] = {
+          location: factory.locationId,
+          factories: []
+        };
+      }
+      groups[locationKey].factories.push(factory);
+    });
+    
+    // Sort groups: locations first (by name), then unassigned
+    const sortedGroups = Object.entries(groups).sort(([keyA, groupA], [keyB, groupB]) => {
+      if (keyA === 'unassigned') return 1;
+      if (keyB === 'unassigned') return -1;
+      return (groupA.location?.name || '').localeCompare(groupB.location?.name || '');
+    });
+    
+    return sortedGroups;
+  };
 
   const hasUnsatisfiedFactories = factoryStatuses && 
     Array.from(factoryStatuses.values()).some(s => !s.isSatisfied);
@@ -175,20 +206,58 @@ export const Sidebar: FC<SidebarProps> = ({
                   sensors={sensors}
                   collisionDetection={closestCenter}
                   onDragEnd={handleDragEnd}
-                >                  <SortableContext
+                >
+                  <SortableContext
                     items={filteredFactories.map(f => f.id)}
                     strategy={verticalListSortingStrategy}
-                  >                    <div className="flex flex-col gap-2">
-                      {filteredFactories.map((factory) => (
-                        <FactoryNavigationCard
-                          key={factory.id}
-                          factory={factory}
-                          isActive={factory.id === activeFactoryId}
-                          onSelect={onSelectFactory}
-                          onDelete={onDeleteFactory}
-                          onEdit={onEditFactory}
-                          status={factoryStatuses?.get(factory.id)}
-                        />
+                  >
+                    <div className="flex flex-col gap-4">
+                      {groupedFactories().map(([locationKey, group]) => (
+                        <div key={locationKey} className="space-y-2">
+                          {/* Location Header */}
+                          <div className="flex items-center gap-2 px-2 py-1">
+                            {group.location ? (
+                              <>
+                                <div 
+                                  className="w-4 h-4 rounded-full flex items-center justify-center text-xs"
+                                  style={{ backgroundColor: group.location.color }}
+                                >
+                                  {group.location.icon}
+                                </div>
+                                <span className="text-xs font-medium text-slate-300">
+                                  {group.location.name}
+                                </span>
+                              </>
+                            ) : (
+                              <>
+                                <div className="w-4 h-4 rounded-full bg-slate-600 flex items-center justify-center text-xs">
+                                  🌍
+                                </div>
+                                <span className="text-xs font-medium text-slate-400">
+                                  Unassigned
+                                </span>
+                              </>
+                            )}
+                            <span className="text-xs text-slate-500 bg-slate-800 px-1.5 py-0.5 rounded">
+                              {group.factories.length}
+                            </span>
+                          </div>
+                          
+                          {/* Factories in this location */}
+                          <div className="flex flex-col gap-2 ml-2">
+                            {group.factories.map((factory) => (
+                              <FactoryNavigationCard
+                                key={factory.id}
+                                factory={factory}
+                                isActive={factory.id === activeFactoryId}
+                                onSelect={onSelectFactory}
+                                onDelete={onDeleteFactory}
+                                onEdit={onEditFactory}
+                                status={factoryStatuses?.get(factory.id)}
+                              />
+                            ))}
+                          </div>
+                        </div>
                       ))}
                     </div>
                   </SortableContext>

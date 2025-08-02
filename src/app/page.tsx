@@ -4,11 +4,19 @@ import { useSession } from "next-auth/react";
 import { Sidebar } from "../components/Sidebar";
 import { FactorySection } from "../components/FactorySection";
 import { DismissibleNotification } from "@/components/ui/dismissible-notification";
+import AddFactoryDialog from "@/components/AddFactoryDialog";
+import EditFactoryDialog from "@/components/EditFactoryDialog";
 
 interface Factory {
   id: string; 
   name: string;
   order?: number;
+  locationId?: {
+    _id: string;
+    name: string;
+    color: string;
+    icon: string;
+  };
   tasks: Array<{ id: string; text: string; completed: boolean; createdAt: string }>;
   notes: Array<{ id: string; text: string; createdAt: string }>;
 }
@@ -25,6 +33,9 @@ export default function Home() {
   const [error, setError] = useState<string | null>(null);
   const [showWelcomeNotification, setShowWelcomeNotification] = useState(false);
   const [factoryStatuses, setFactoryStatuses] = useState<Map<string, FactoryStatus>>(new Map());
+  const [showAddFactoryDialog, setShowAddFactoryDialog] = useState(false);
+  const [showEditFactoryDialog, setShowEditFactoryDialog] = useState(false);
+  const [editingFactory, setEditingFactory] = useState<Factory | null>(null);
   const { data: session, status } = useSession();
 
   // Check localStorage for welcome notification preference
@@ -55,12 +66,19 @@ export default function Home() {
           _id: string; 
           name: string;
           order?: number;
+          locationId?: {
+            _id: string;
+            name: string;
+            color: string;
+            icon: string;
+          };
           tasks?: Array<{ id: string; text: string; completed: boolean; createdAt: string }>;
           notes?: Array<{ id: string; text: string; createdAt: string }>;
         }) => ({
           id: factory._id,
           name: factory.name,
           order: factory.order || 0,
+          locationId: factory.locationId,
           tasks: factory.tasks || [],
           notes: factory.notes || []
         }));
@@ -87,31 +105,30 @@ export default function Home() {
       return;
     }
 
-    const name = "A new factory";
-    try {
-      const res = await fetch("/api/factories", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ name }),
-      });
-      if (!res.ok) throw new Error("Failed to create factory");
-      const factory = await res.json();
-      const newFactory = { 
-        id: factory._id, 
-        name: factory.name,
-        order: factory.order || 0,
-        tasks: factory.tasks || [],
-        notes: factory.notes || []
-      };
-      setFactories(f => [...f, newFactory]);
-      
-      // Set the new factory as active
-      setActiveFactoryId(newFactory.id);
-    } catch (err) {
-      console.error("Error creating factory:", err);
-      setError("Failed to create factory");
-    }
+    setShowAddFactoryDialog(true);
   }
+
+  const handleFactoryAdded = (newFactory: Factory) => {
+    setFactories(f => [...f, newFactory]);
+    setActiveFactoryId(newFactory.id);
+  };
+
+  const handleEditFactory = (id: string) => {
+    const factory = factories.find(f => f.id === id);
+    if (factory) {
+      setEditingFactory(factory);
+      setShowEditFactoryDialog(true);
+    }
+  };
+
+  const handleFactoryUpdated = (updatedFactory: Factory) => {
+    setFactories(factories => 
+      factories.map(factory => 
+        factory.id === updatedFactory.id ? updatedFactory : factory
+      )
+    );
+    setEditingFactory(null);
+  };
 
   const handleSelectFactory = (id: string) => {
     setActiveFactoryId(id);
@@ -195,6 +212,7 @@ export default function Home() {
         onAddFactory={handleAddFactory}
         onSelectFactory={handleSelectFactory}
         onDeleteFactory={handleFactoryDelete}
+        onEditFactory={handleEditFactory}
         onReorderFactories={handleReorderFactories}
         factoryStatuses={factoryStatuses}
       /><main className="ml-64 flex-1 overflow-y-auto h-[calc(100vh-3rem)]">        <div className="flex flex-col items-center p-4 md:p-8">
@@ -279,6 +297,21 @@ export default function Home() {
           )}
         </div>
       </main>
+
+      {/* Add Factory Dialog */}
+      <AddFactoryDialog
+        isOpen={showAddFactoryDialog}
+        onClose={() => setShowAddFactoryDialog(false)}
+        onFactoryAdded={handleFactoryAdded}
+      />
+
+      {/* Edit Factory Dialog */}
+      <EditFactoryDialog
+        isOpen={showEditFactoryDialog}
+        onClose={() => setShowEditFactoryDialog(false)}
+        onFactoryUpdated={handleFactoryUpdated}
+        factory={editingFactory}
+      />
     </>
   );
 }

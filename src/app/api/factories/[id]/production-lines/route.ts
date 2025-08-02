@@ -10,6 +10,42 @@ import Item, { IItem } from '@/lib/models/Item';
 // Helper function to calculate production metrics
 async function calculateProductionMetrics(productionLine: any) {
   try {
+    // Handle extraction production lines
+    if (productionLine.recipeClassName === 'EXTRACTION') {
+      const item = await Item.findOne({ className: productionLine.itemClassName }).lean() as IItem | null;
+      if (!item) return productionLine;
+      
+      const extractionData = productionLine.extractionData;
+      const baseRate = extractionData?.baseRate || 60;
+      const requiredBuildings = Math.ceil(productionLine.targetQuantityPerMinute / baseRate);
+      const actualQuantityPerMinute = requiredBuildings * baseRate;
+      
+      return {
+        ...productionLine,
+        item: {
+          name: item.name,
+          slug: item.slug,
+          icon: item.icon
+        },
+        recipe: {
+          name: extractionData?.name || 'Resource Extraction',
+          time: 1, // Continuous extraction
+          ingredients: [], // No ingredients for raw extraction
+          products: [{ 
+            item: productionLine.itemClassName, 
+            amount: baseRate,
+            name: item.name 
+          }]
+        },
+        buildingCount: requiredBuildings,
+        actualQuantityPerMinute,
+        powerConsumption: requiredBuildings * (extractionData?.powerConsumption || 0),
+        efficiency: 100,
+        buildingType: extractionData?.extractorType || 'Extractor'
+      };
+    }
+    
+    // Handle standard recipe-based production lines
     const recipe = await Recipe.findOne({ className: productionLine.recipeClassName }).lean() as IRecipe | null;
     if (!recipe) return productionLine;
     
@@ -157,7 +193,60 @@ export async function POST(
       );
     }
     
-    // Validate that the item and recipe exist
+    // Check if this is an extraction (special case)
+    const isExtraction = body.recipeClassName === 'EXTRACTION';
+    
+    if (isExtraction) {
+      // For extractions, we only need to validate the item exists
+      const item = await Item.findOne({ className: body.itemClassName });
+      
+      if (!item) {
+        return NextResponse.json(
+          { error: 'Item not found' },
+          { status: 404 }
+        );
+      }
+      
+      // Create extraction production line
+      const productionLine = await ProductionLine.create({
+        itemClassName: body.itemClassName,
+        recipeClassName: 'EXTRACTION',
+        targetQuantityPerMinute: body.targetQuantityPerMinute,
+        extractionData: body.extractionData,
+        factoryId,
+        active: true,
+        buildingType: body.extractionData?.extractorType || 'Extractor',
+        notes: `Extraction: ${body.extractionData?.description || ''}`
+      });
+      
+      // For extractions, return simplified metrics
+      const extractionWithMetrics = {
+        ...productionLine.toObject(),
+        item: {
+          name: item.name,
+          slug: item.slug,
+          icon: item.icon
+        },
+        recipe: {
+          name: body.extractionData?.name || 'Resource Extraction',
+          time: 1, // Extractions are continuous
+          ingredients: [], // No ingredients for raw extraction
+          products: [{ 
+            item: body.itemClassName, 
+            amount: body.extractionData?.baseRate || body.targetQuantityPerMinute,
+            name: item.name 
+          }]
+        },
+        buildingCount: Math.ceil(body.targetQuantityPerMinute / (body.extractionData?.baseRate || 60)),
+        actualQuantityPerMinute: body.targetQuantityPerMinute,
+        powerConsumption: (Math.ceil(body.targetQuantityPerMinute / (body.extractionData?.baseRate || 60))) * (body.extractionData?.powerConsumption || 0),
+        efficiency: 100
+      };
+      
+      return NextResponse.json(extractionWithMetrics, { status: 201 });
+    }
+    
+    // Standard recipe-based production line
     const [item, recipe] = await Promise.all([
       Item.findOne({ className: body.itemClassName }),
       Recipe.findOne({ className: body.recipeClassName })

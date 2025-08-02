@@ -3,6 +3,7 @@ import { Schema, models, model } from "mongoose";
 const FactorySchema = new Schema({
   name: { type: String, required: true },
   userId: { type: String, required: true, index: true },
+  locationId: { type: Schema.Types.ObjectId, ref: 'Location', required: false }, // Optional location reference
   order: { type: Number, default: 0 },
   tasks: [{ 
     id: { type: String, required: true },
@@ -23,9 +24,4 @@ const FactorySchema = new Schema({
   runValidators: true
 });
 
-// Force deletion of existing model to ensure recompilation
-if (models.Factory) {
-  delete models.Factory;
-}
-
-export const Factory = model("Factory", FactorySchema);
+export const Factory = models.Factory || model("Factory", FactorySchema);
