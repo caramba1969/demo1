@@ -114,7 +114,7 @@ export async function GET(request: NextRequest) {
   } catch (error) {
     console.error('Error fetching production lines:', error);
     return NextResponse.json(
-      { error: 'Failed to fetch production lines' },
+      { error: 'Unable to load production lines. Please try refreshing the page.' },
       { status: 500 }
     );
   }
@@ -154,14 +154,14 @@ export async function POST(request: NextRequest) {
     
     if (!item) {
       return NextResponse.json(
-        { error: 'Item not found' },
+        { error: 'The selected item was not found. Please choose a different item.' },
         { status: 404 }
       );
     }
     
     if (!recipe) {
       return NextResponse.json(
-        { error: 'Recipe not found' },
+        { error: 'The selected recipe was not found. Please choose a different recipe.' },
         { status: 404 }
       );
     }
@@ -169,7 +169,7 @@ export async function POST(request: NextRequest) {
     const producesItem = recipe.products.some((p: any) => p.item === body.itemClassName);
     if (!producesItem) {
       return NextResponse.json(
-        { error: 'Recipe does not produce the specified item' },
+        { error: 'The selected recipe doesn\'t produce the chosen item. Please select a compatible recipe.' },
         { status: 400 }
       );
     }
@@ -185,7 +185,7 @@ export async function POST(request: NextRequest) {
     console.error('Error creating production line:', error);
     
     return NextResponse.json(
-      { error: 'Failed to create production line' },
+      { error: 'Unable to create production line. Please check your input and try again.' },
       { status: 500 }
     );
   }
