@@ -4,7 +4,7 @@ export interface IProductionLine {
   _id?: mongoose.Types.ObjectId;
   factoryId: mongoose.Types.ObjectId;
   itemClassName: string; // reference to Item
-  recipeClassName: string; // reference to Recipe
+  recipeClassName: string; // reference to Recipe (or 'EXTRACTION' for extractions)
   targetQuantityPerMinute: number;
   actualQuantityPerMinute?: number;
   buildingCount?: number;
@@ -13,6 +13,13 @@ export interface IProductionLine {
   efficiency?: number; // percentage (0-100)
   notes?: string;
   active: boolean;
+  extractionData?: {
+    type: 'ore' | 'fluid' | 'gas';
+    extractorType: string;
+    baseRate: number;
+    powerConsumption?: number;
+    description?: string;
+  }; // For resource extraction production lines
   createdAt?: Date;
   updatedAt?: Date;
 }
@@ -33,8 +40,8 @@ const ProductionLineSchema = new mongoose.Schema<IProductionLine>({
   recipeClassName: {
     type: String,
     required: true,
-    ref: 'Recipe',
     index: true
+    // Note: For extractions, this will be 'EXTRACTION'
   },
   targetQuantityPerMinute: {
     type: Number,
@@ -61,6 +68,16 @@ const ProductionLineSchema = new mongoose.Schema<IProductionLine>({
     default: 100
   },
   notes: String,
+  extractionData: {
+    type: {
+      type: String,
+      enum: ['ore', 'fluid', 'gas']
+    },
+    extractorType: String,
+    baseRate: Number,
+    powerConsumption: Number,
+    description: String
+  },
   active: {
     type: Boolean,
     default: true

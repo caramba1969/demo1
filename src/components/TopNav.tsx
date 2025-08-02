@@ -4,7 +4,7 @@ import { useSession, signIn, signOut } from "next-auth/react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { Button } from "./ui/button";
-import { Menu, LogIn, LayoutDashboard, BarChart2, BookOpen, HeartHandshake, User, Settings } from "lucide-react";
+import { Menu, LogIn, LayoutDashboard, BarChart2, BookOpen, HeartHandshake, User, Settings, MapPin } from "lucide-react";
 
 export const TopNav: FC = () => {
   const pathname = usePathname();
@@ -41,6 +41,19 @@ export const TopNav: FC = () => {
             aria-label="Graph"
           >
             <BarChart2 className="w-5 h-5" /> Graph
+          </Button>
+        </Link>
+        <Link href="/locations">
+          <Button 
+            variant="ghost" 
+            className={`flex gap-1 ${
+              pathname === '/locations' 
+                ? 'text-orange-400 bg-orange-500/10' 
+                : 'text-neutral-200 hover:text-orange-300 hover:bg-orange-500/10'
+            }`} 
+            aria-label="Locations"
+          >
+            <MapPin className="w-5 h-5" /> Locations
           </Button>
         </Link>
         <Link href="/recipes">

@@ -29,7 +29,7 @@ export async function GET(
     }
 
     await dbConnect();
-    const factoryId = params.id;
+    const factoryId = (await params).id;
     const { searchParams } = new URL(request.url);
     const itemClassName = searchParams.get('itemClassName');
 
