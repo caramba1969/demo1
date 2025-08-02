@@ -90,8 +90,8 @@ export default function Home() {
           setActiveFactoryId(sortedFactories[0].id);
         }
       } catch (err) {
-        console.error("Error loading factories:", err);
-        setError("Failed to load factories");
+        console.error("Error loading `factories`:", err);
+        setError("Failed to load `factories`");
       } finally {
         setIsLoading(false);
       }    };
@@ -151,8 +151,8 @@ export default function Home() {
         throw new Error("Failed to reorder factories");
       }
     } catch (err) {
-      console.error("Error reordering factories:", err);
-      setError("Failed to reorder factories");
+      console.error("Error reordering `factories`:", err);
+      setError("Failed to reorder `factories`");
       // Reload factories to get the correct order
       window.location.reload();
     }
@@ -192,8 +192,8 @@ export default function Home() {
         setActiveFactoryId(remainingFactories.length > 0 ? remainingFactories[0].id : undefined);
       }
     } catch (err) {
-      console.error("Error deleting factory:", err);
-      setError("Failed to delete factory");
+      console.error("Error deleting `factory`:", err);
+      setError("Failed to delete `factory`");
     }
   };
   const handleWelcomeDismiss = () => {

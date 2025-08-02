@@ -86,7 +86,7 @@ export default function ProductionLineCard({
           setExports(data.exports || []);
         }
       } catch (error) {
-        console.error('Error loading exports:', error);
+        console.error('Error loading `exports`:', error);
       }
     };
 
@@ -106,7 +106,7 @@ export default function ProductionLineCard({
       });
       setIsEditing(false);
     } catch (error) {
-      console.error('Failed to update production line:', error);
+      console.error('Failed to update `production line`:', error);
     } finally {
       setLoading(false);
     }
@@ -124,7 +124,7 @@ export default function ProductionLineCard({
         active: !productionLine.active
       });
     } catch (error) {
-      console.error('Failed to toggle production line:', error);
+      console.error('Failed to toggle `production line`:', error);
     }
   };
 
@@ -133,7 +133,7 @@ export default function ProductionLineCard({
       try {
         await onDelete(productionLine._id);
       } catch (error) {
-        console.error('Failed to delete production line:', error);
+        console.error('Failed to delete `production line`:', error);
       }
     }
   };

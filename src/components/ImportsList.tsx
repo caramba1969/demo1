@@ -33,7 +33,7 @@ export default function ImportsList({ factoryId, onImportDeleted, refreshTrigger
         const data = await response.json();
       setImports(data.imports || []);
     } catch (error) {
-      console.error('Error loading imports:', error);
+      console.error('Error loading `imports`:', error);
     } finally {
       setLoading(false);
     }
@@ -65,8 +65,8 @@ export default function ImportsList({ factoryId, onImportDeleted, refreshTrigger
       }
 
     } catch (error) {
-      console.error('Error deleting import:', error);
-      alert('Failed to delete import. Please try again.');
+      console.error('Error deleting `import`:', error);
+      alert('Failed to delete `import`. Please try again.');
     } finally {
       setDeleting(null);
     }

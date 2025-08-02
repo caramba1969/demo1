@@ -37,11 +37,11 @@ export default function ExportsList({ factoryId, refreshTrigger }: ExportsListPr
         setExports(data.exports || []);
         setLastRefresh(new Date());
       } else {
-        console.error('Failed to load exports');
+        console.error('Failed to load `exports`');
         setExports([]);
       }
     } catch (error) {
-      console.error('Error loading exports:', error);
+      console.error('Error loading `exports`:', error);
       setExports([]);
     } finally {
       setLoading(false);

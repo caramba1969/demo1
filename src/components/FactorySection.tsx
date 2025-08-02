@@ -114,7 +114,7 @@ export const FactorySection: FC<FactorySectionProps> = ({
       const data = await response.json();
       setProductionLines(data.productionLines || []);
     } catch (error) {
-      console.error('Error loading production lines:', error);
+      console.error('Error loading `production lines`:', error);
     } finally {
       setLoadingProductionLines(false);
     }
@@ -131,7 +131,7 @@ export const FactorySection: FC<FactorySectionProps> = ({
         setImports([]);
       }
     } catch (error) {
-      console.error('Error loading imports:', error);
+      console.error('Error loading `imports`:', error);
       setImports([]);
     }
   }, [id]);
@@ -178,7 +178,7 @@ export const FactorySection: FC<FactorySectionProps> = ({
       setDependencyRefreshTrigger(prev => prev + 1);
       setExportsRefreshTrigger(prev => prev + 1);
     } catch (error) {
-      console.error('Error adding production line:', error);
+      console.error('Error adding `production line`:', error);
     }
   };  // Update production line
   const handleUpdateProductionLine = async (lineId: string, updates: Partial<ProductionLine>) => {
@@ -198,7 +198,7 @@ export const FactorySection: FC<FactorySectionProps> = ({
       setDependencyRefreshTrigger(prev => prev + 1);
       setExportsRefreshTrigger(prev => prev + 1);
     } catch (error) {
-      console.error('Error updating production line:', error);
+      console.error('Error updating `production line`:', error);
     }
   };
   // Delete production line
@@ -216,7 +216,7 @@ export const FactorySection: FC<FactorySectionProps> = ({
       setDependencyRefreshTrigger(prev => prev + 1);
       setExportsRefreshTrigger(prev => prev + 1);
     } catch (error) {
-      console.error('Error deleting production line:', error);
+      console.error('Error deleting `production line`:', error);
     }
   };
 
