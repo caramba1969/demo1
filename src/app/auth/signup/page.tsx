@@ -3,17 +3,26 @@ import { useEffect, useState } from "react";
 import { getProviders, signIn, useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
+import { ErrorNotification } from "@/components/ui/error-notification";
+import { useErrorHandler, UserError } from "@/lib/errors";
 import { Github, Loader2 } from "lucide-react";
 
 export default function SignUpPage() {
   const [providers, setProviders] = useState<any>(null);
   const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState<UserError | null>(null);
   const { data: session, status } = useSession();
+  const { handleError } = useErrorHandler();
   const router = useRouter();
 
   useEffect(() => {
-    getProviders().then((providers) => setProviders(providers));
-  }, []);
+    getProviders()
+      .then((providers) => setProviders(providers))
+      .catch((err) => {
+        const userError = handleError(err);
+        setError(userError);
+      });
+  }, [handleError]);
 
   // Redirect if already logged in
   useEffect(() => {
@@ -24,13 +33,28 @@ export default function SignUpPage() {
 
   const handleSignUp = async (providerId: string) => {
     setIsLoading(true);
+    setError(null);
     try {
-      await signIn(providerId, { 
+      const result = await signIn(providerId, { 
         callbackUrl: "/",
-        redirect: true 
+        redirect: false 
       });
-    } catch (error) {
-      console.error("Sign up error:", error);
+      
+      if (result?.error) {
+        const userError = handleError({
+          message: result.error === 'OAuthCallback' 
+            ? 'Account creation was cancelled or failed. Please try again.'
+            : `Account creation failed: ${result.error}`
+        });
+        setError(userError);
+        setIsLoading(false);
+      } else if (result?.url) {
+        // Successful authentication, redirect
+        window.location.href = result.url;
+      }
+    } catch (err) {
+      const userError = handleError(err);
+      setError(userError);
       setIsLoading(false);
     }
   };
@@ -79,7 +103,17 @@ export default function SignUpPage() {
           <p className="text-neutral-400 text-center text-sm max-w-xs">
             Join thousands of engineers optimizing their Satisfactory factories
           </p>
-        </div>        <div className="flex flex-col gap-3">
+        </div>        
+        {error && (
+          <div className="mb-6">
+            <ErrorNotification 
+              error={error} 
+              onDismiss={() => setError(null)}
+            />
+          </div>
+        )}
+
+        <div className="flex flex-col gap-3">
           {providers &&
             Object.values(providers).map((provider: any) => (
               <Button
