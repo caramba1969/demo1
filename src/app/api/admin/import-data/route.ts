@@ -35,10 +35,10 @@ export async function POST(request: NextRequest) {
       ...result
     });
   } catch (error: any) {
-    console.error('Error importing data:', error);
+    console.error('Error importing `data`:', error);
     return NextResponse.json(
       { 
-        error: 'Failed to import Satisfactory data',
+        error: 'Failed to import Satisfactory `data`',
         details: error.message 
       },
       { status: 500 }

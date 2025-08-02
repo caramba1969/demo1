@@ -30,7 +30,7 @@ export async function POST(req: NextRequest) {
   }
   
   if (!session.user?.id) {
-    console.error('Session user ID is missing:', session.user);
+    console.error('Session `user ID` is missing:', session.user);
     return NextResponse.json(
       { error: "User ID not found in session" },
       { status: 400 }
@@ -42,7 +42,7 @@ export async function POST(req: NextRequest) {
   
   if (!name) {
     return NextResponse.json(
-      { error: "Location name is required" },
+      { error: "Location `name` is required" },
       { status: 400 }
     );
   }
@@ -64,18 +64,18 @@ export async function POST(req: NextRequest) {
     const location = await Location.create(locationData);
     return NextResponse.json(location, { status: 201 });
   } catch (error: any) {
-    console.error('Error creating location:', error);
+    console.error('Error creating `location`:', error);
     
     // Handle duplicate key error (unique constraint violation)
     if (error.code === 11000) {
       return NextResponse.json(
-        { error: 'A location with this name already exists' },
+        { error: 'A `location` with this `name` already exists' },
         { status: 409 }
       );
     }
     
     return NextResponse.json(
-      { error: 'Failed to create location', details: error },
+      { error: 'Failed to create `location`', details: error },
       { status: 500 }
     );
   }
@@ -96,7 +96,7 @@ export async function PATCH(req: NextRequest) {
 
   if (!id) {
     return NextResponse.json(
-      { error: "Location ID is required" },
+      { error: "Location `ID` is required" },
       { status: 400 }
     );
   }
@@ -123,18 +123,18 @@ export async function PATCH(req: NextRequest) {
 
     return NextResponse.json(location);
   } catch (error: any) {
-    console.error("Error updating location:", error);
+    console.error("Error updating `location`:", error);
     
     // Handle duplicate key error
     if (error.code === 11000) {
       return NextResponse.json(
-        { error: 'A location with this name already exists' },
+        { error: 'A `location` with this `name` already exists' },
         { status: 409 }
       );
     }
     
     return NextResponse.json(
-      { error: "Failed to update location" },
+      { error: "Failed to update `location`" },
       { status: 500 }
     );
   }
@@ -155,7 +155,7 @@ export async function DELETE(req: NextRequest) {
 
   if (!id) {
     return NextResponse.json(
-      { error: "Location ID is required" },
+      { error: "Location `ID` is required" },
       { status: 400 }
     );
   }
@@ -167,7 +167,7 @@ export async function DELETE(req: NextRequest) {
     
     if (factoriesCount > 0) {
       return NextResponse.json(
-        { error: `Cannot delete location. ${factoriesCount} factories are still assigned to this location.` },
+        { error: `Cannot delete \`location\`. ${factoriesCount} \`factories\` are still assigned to this \`location\`.` },
         { status: 409 }
       );
     }
@@ -186,9 +186,9 @@ export async function DELETE(req: NextRequest) {
 
     return NextResponse.json({ success: true, deletedLocation: location });
   } catch (err) {
-    console.error("Error deleting location:", err);
+    console.error("Error deleting `location`:", err);
     return NextResponse.json(
-      { error: "Failed to delete location" },
+      { error: "Failed to delete `location`" },
       { status: 500 }
     );
   }
