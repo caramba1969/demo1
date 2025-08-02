@@ -71,10 +71,10 @@ export default function LocationSelector({
         const data = await response.json();
         setLocations(data);
       } else {
-        console.error('Failed to load locations');
+        console.error('Failed to load `locations`');
       }
     } catch (error) {
-      console.error('Error loading locations:', error);
+      console.error('Error loading `locations`:', error);
     } finally {
       setLoading(false);
     }
@@ -101,11 +101,11 @@ export default function LocationSelector({
         setShowAddForm(false);
       } else {
         const errorData = await response.json();
-        alert(errorData.error || 'Failed to create location');
+        alert(errorData.error || 'Failed to create `location`');
       }
     } catch (error) {
-      console.error('Error creating location:', error);
-      alert('Failed to create location');
+      console.error('Error creating `location`:', error);
+      alert('Failed to create `location`');
     }
   };
 
@@ -126,11 +126,11 @@ export default function LocationSelector({
         }
       } else {
         const errorData = await response.json();
-        alert(errorData.error || 'Failed to delete location');
+        alert(errorData.error || 'Failed to delete `location`');
       }
     } catch (error) {
-      console.error('Error deleting location:', error);
-      alert('Failed to delete location');
+      console.error('Error deleting `location`:', error);
+      alert('Failed to delete `location`');
     }
   };
 
