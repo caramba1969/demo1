@@ -55,9 +55,9 @@ export async function GET(request: NextRequest) {
       }
     });
   } catch (error) {
-    console.error('Error fetching items:', error);
+    console.error('Error fetching `items`:', error);
     return NextResponse.json(
-      { error: 'Failed to fetch items' },
+      { error: 'Failed to fetch `items`' },
       { status: 500 }
     );
   }
@@ -74,17 +74,17 @@ export async function POST(request: NextRequest) {
     
     return NextResponse.json(item, { status: 201 });
   } catch (error: any) {
-    console.error('Error creating item:', error);
+    console.error('Error creating `item`:', error);
     
     if (error.code === 11000) {
       return NextResponse.json(
-        { error: 'Item with this className or slug already exists' },
+        { error: 'Item with this `className` or `slug` already exists' },
         { status: 409 }
       );
     }
     
     return NextResponse.json(
-      { error: 'Failed to create item' },
+      { error: 'Failed to create `item`' },
       { status: 500 }
     );
   }

@@ -123,9 +123,9 @@ export async function GET(request: NextRequest) {
       }
     });
   } catch (error) {
-    console.error('Error fetching recipes:', error);
+    console.error('Error fetching `recipes`:', error);
     return NextResponse.json(
-      { error: 'Failed to fetch recipes' },
+      { error: 'Failed to fetch `recipes`' },
       { status: 500 }
     );
   }
@@ -142,17 +142,17 @@ export async function POST(request: NextRequest) {
     
     return NextResponse.json(recipe, { status: 201 });
   } catch (error: any) {
-    console.error('Error creating recipe:', error);
+    console.error('Error creating `recipe`:', error);
     
     if (error.code === 11000) {
       return NextResponse.json(
-        { error: 'Recipe with this className or slug already exists' },
+        { error: 'Recipe with this `className` or `slug` already exists' },
         { status: 409 }
       );
     }
     
     return NextResponse.json(
-      { error: 'Failed to create recipe' },
+      { error: 'Failed to create `recipe`' },
       { status: 500 }
     );
   }

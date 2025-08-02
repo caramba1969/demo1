@@ -48,11 +48,11 @@ export default function AddFactoryDialog({ isOpen, onClose, onFactoryAdded }: Ad
         handleClose();
       } else {
         const errorData = await response.json();
-        alert(errorData.error || 'Failed to create factory');
+        alert(errorData.error || 'Failed to create `factory`');
       }
     } catch (error) {
-      console.error('Error creating factory:', error);
-      alert('Failed to create factory');
+      console.error('Error creating `factory`:', error);
+      alert('Failed to create `factory`');
     } finally {
       setIsSubmitting(false);
     }

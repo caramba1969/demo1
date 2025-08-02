@@ -106,8 +106,8 @@ export default function DependencyTracker({
       }
 
     } catch (error) {
-      console.error('Error creating import:', error);
-      alert('Failed to create import. Please try again.');
+      console.error('Error creating `import`:', error);
+      alert('Failed to create `import`. Please try again.');
     } finally {
       setImporting(null);
     }
@@ -125,7 +125,7 @@ export default function DependencyTracker({
         importsLengthRef.current = 0; // Update ref
       }
     } catch (error) {
-      console.error('Error loading imports:', error);
+      console.error('Error loading `imports`:', error);
       setImports([]);
       importsLengthRef.current = 0; // Update ref
     }
@@ -170,7 +170,7 @@ export default function DependencyTracker({
               return { ...factory, productionLines: [] };
             }
           } catch (error) {
-            console.warn(`Error loading production lines for factory ${factory._id}:`, error);
+            console.warn(`Error loading \`production lines\` for \`factory\` ${factory._id}:`, error);
             return { ...factory, productionLines: [] };
           }
         })
@@ -179,7 +179,7 @@ export default function DependencyTracker({
       setFactories(factoriesWithProductionLines);
       setLastRefresh(new Date());
     } catch (error) {
-      console.error('Error refreshing dependencies:', error);
+      console.error('Error refreshing `dependencies`:', error);
       setFactories([]);    } finally {
       setLoading(false);
     }

@@ -34,7 +34,7 @@ export async function GET(req: NextRequest) {
               locationId: location
             };
           } catch (error) {
-            console.error('Error fetching location:', error);
+            console.error('Error fetching `location`:', error);
             return factory.toObject();
           }
         }
@@ -44,9 +44,9 @@ export async function GET(req: NextRequest) {
     
     return NextResponse.json(factoriesWithLocations);
   } catch (error) {
-    console.error('Error fetching factories:', error);
+    console.error('Error fetching `factories`:', error);
     return NextResponse.json(
-      { error: 'Failed to fetch factories' },
+      { error: 'Failed to fetch `factories`' },
       { status: 500 }
     );
   }
@@ -62,7 +62,7 @@ export async function POST(req: NextRequest) {
     );
   }
   if (!session.user?.id) {
-    console.error('Session user ID is missing:', session.user);
+    console.error('Session `user ID` is missing:', session.user);
     return NextResponse.json(
       { error: "User ID not found in session" },
       { status: 400 }
@@ -92,9 +92,9 @@ export async function POST(req: NextRequest) {
     const populatedFactory = await Factory.findById(factory._id).populate('locationId', 'name color icon');
     return NextResponse.json(populatedFactory, { status: 201 });
   } catch (error) {
-    console.error('Error creating factory:', error);
+    console.error('Error creating `factory`:', error);
     return NextResponse.json(
-      { error: 'Failed to create factory', details: error },
+      { error: 'Failed to create `factory`', details: error },
       { status: 500 }
     );
   }
@@ -115,7 +115,7 @@ export async function PATCH(req: NextRequest) {
 
   if (!id) {
     return NextResponse.json(
-      { error: "Factory ID is required" },
+      { error: "Factory `ID` is required" },
       { status: 400 }
     );
   }
@@ -140,9 +140,9 @@ export async function PATCH(req: NextRequest) {
 
     return NextResponse.json(factory);
   } catch (err) {
-    console.error("Error updating factory:", err);
+    console.error("Error updating `factory`:", err);
     return NextResponse.json(
-      { error: "Failed to update factory" },
+      { error: "Failed to update `factory`" },
       { status: 500 }
     );
   }
@@ -163,7 +163,7 @@ export async function DELETE(req: NextRequest) {
 
   if (!id) {
     return NextResponse.json(
-      { error: "Factory ID is required" },
+      { error: "Factory `ID` is required" },
       { status: 400 }
     );
   }
@@ -183,9 +183,9 @@ export async function DELETE(req: NextRequest) {
 
     return NextResponse.json({ success: true, deletedFactory: factory });
   } catch (err) {
-    console.error("Error deleting factory:", err);
+    console.error("Error deleting `factory`:", err);
     return NextResponse.json(
-      { error: "Failed to delete factory" },
+      { error: "Failed to delete `factory`" },
       { status: 500 }
     );
   }

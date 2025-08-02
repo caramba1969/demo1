@@ -71,11 +71,11 @@ export default function EditFactoryDialog({
         handleClose();
       } else {
         const errorData = await response.json();
-        alert(errorData.error || 'Failed to update factory');
+        alert(errorData.error || 'Failed to update `factory`');
       }
     } catch (error) {
-      console.error('Error updating factory:', error);
-      alert('Failed to update factory');
+      console.error('Error updating `factory`:', error);
+      alert('Failed to update `factory`');
     } finally {
       setIsSubmitting(false);
     }

@@ -20,10 +20,10 @@ export async function importSatisfactoryData(dataFilePath: string) {
     const rawData = fs.readFileSync(dataFilePath, 'utf8');
     const data: SatisfactoryData = JSON.parse(rawData);
     
-    console.log(`Found ${Object.keys(data.items).length} items and ${Object.keys(data.recipes).length} recipes`);
+    console.log(`Found ${Object.keys(data.items).length} \`items\` and ${Object.keys(data.recipes).length} \`recipes\``);
     
     // Import Items
-    console.log('Importing items...');
+    console.log('Importing `items`...');
     const itemEntries = Object.entries(data.items);
     const itemBatch = [];
     
@@ -48,10 +48,10 @@ export async function importSatisfactoryData(dataFilePath: string) {
     // Clear existing items and insert new ones
     await Item.deleteMany({});
     await Item.insertMany(itemBatch);
-    console.log(`Imported ${itemBatch.length} items`);
+    console.log(`Imported ${itemBatch.length} \`items\``);
     
     // Import Recipes
-    console.log('Importing recipes...');
+    console.log('Importing `recipes`...');
     const recipeEntries = Object.entries(data.recipes);
     const recipeBatch = [];
     
@@ -81,7 +81,7 @@ export async function importSatisfactoryData(dataFilePath: string) {
     // Clear existing recipes and insert new ones
     await Recipe.deleteMany({});
     await Recipe.insertMany(recipeBatch);
-    console.log(`Imported ${recipeBatch.length} recipes`);
+    console.log(`Imported ${recipeBatch.length} \`recipes\``);
     
     console.log('Satisfactory data import completed successfully!');
     
@@ -102,7 +102,7 @@ if (require.main === module) {
   const dataFilePath = process.argv[2] || './data1.0.json';
   
   if (!fs.existsSync(dataFilePath)) {
-    console.error(`Data file not found: ${dataFilePath}`);
+    console.error(`Data file not found: \`${dataFilePath}\``);
     process.exit(1);
   }
   
