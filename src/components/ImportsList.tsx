@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { ExternalLink, X, Factory, Package } from 'lucide-react';
+import { ExternalLink, X, Factory, Package, Pencil, Check } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 
 interface FactoryImport {
@@ -21,10 +21,21 @@ interface ImportsListProps {
   refreshTrigger?: number; // Add a trigger to force refresh
 }
 
+interface CapacityInfo {
+  produced: number;       // total production in source factory
+  allocatedElsewhere: number; // sum of other exports of same item
+  max: number;            // produced - allocatedElsewhere
+}
+
 export default function ImportsList({ factoryId, onImportDeleted, refreshTrigger }: ImportsListProps) {
   const [imports, setImports] = useState<FactoryImport[]>([]);
   const [loading, setLoading] = useState(false);
-  const [deleting, setDeleting] = useState<string | null>(null);  // Load imports for this factory
+  const [deleting, setDeleting] = useState<string | null>(null);
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editAmount, setEditAmount] = useState<string>('');
+  const [saving, setSaving] = useState(false);
+  const [capacity, setCapacity] = useState<CapacityInfo | null>(null);
+  const [capacityLoading, setCapacityLoading] = useState(false);  // Load imports for this factory
   const loadImports = async () => {
     try {
       setLoading(true);
@@ -44,6 +55,80 @@ export default function ImportsList({ factoryId, onImportDeleted, refreshTrigger
       loadImports();
     }
   }, [factoryId, refreshTrigger]); // Add refreshTrigger to dependencies
+
+  const startEdit = async (importItem: FactoryImport) => {
+    setEditingId(importItem._id);
+    setEditAmount(importItem.requiredAmount.toString());
+    setCapacity(null);
+    setCapacityLoading(true);
+
+    try {
+      const [linesRes, exportsRes] = await Promise.all([
+        fetch(`/api/factories/${importItem.sourceFactoryId._id}/production-lines`),
+        fetch(`/api/factories/${importItem.sourceFactoryId._id}/exports?itemClassName=${importItem.itemClassName}`),
+      ]);
+
+      let produced = 0;
+      if (linesRes.ok) {
+        const linesData = await linesRes.json();
+        const line = (linesData.productionLines || []).find(
+          (l: { itemClassName: string; targetQuantityPerMinute: number }) =>
+            l.itemClassName === importItem.itemClassName
+        );
+        produced = line?.targetQuantityPerMinute ?? 0;
+      }
+
+      let allocatedElsewhere = 0;
+      if (exportsRes.ok) {
+        const exportsData = await exportsRes.json();
+        allocatedElsewhere = (exportsData.exports || [])
+          .filter((e: { _id: string; requiredAmount: number }) => e._id !== importItem._id)
+          .reduce((sum: number, e: { requiredAmount: number }) => sum + e.requiredAmount, 0);
+      }
+
+      setCapacity({
+        produced,
+        allocatedElsewhere,
+        max: Math.max(0, produced - allocatedElsewhere),
+      });
+    } catch {
+      // capacity info is optional, don't block editing
+    } finally {
+      setCapacityLoading(false);
+    }
+  };
+
+  const cancelEdit = () => {
+    setEditingId(null);
+    setEditAmount('');
+    setCapacity(null);
+  };
+
+  const handleSaveEdit = async (importId: string) => {
+    const amount = parseFloat(editAmount);
+    if (isNaN(amount) || amount <= 0) return;
+
+    try {
+      setSaving(true);
+      const response = await fetch(`/api/factories/${factoryId}/imports`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ importId, requiredAmount: amount }),
+      });
+
+      if (!response.ok) throw new Error('Failed to update import');
+
+      setImports(prev =>
+        prev.map(imp => imp._id === importId ? { ...imp, requiredAmount: amount } : imp)
+      );
+      setEditingId(null);
+    } catch (error) {
+      console.error('Error updating import:', error);
+      alert('Failed to update import. Please try again.');
+    } finally {
+      setSaving(false);
+    }
+  };
 
   // Delete an import
   const handleDeleteImport = async (importId: string) => {
@@ -103,16 +188,69 @@ export default function ImportsList({ factoryId, onImportDeleted, refreshTrigger
             key={importItem._id}
             className="flex items-center justify-between p-3 bg-slate-800/50 border border-slate-600 rounded-lg"
           >
-            <div className="flex items-center gap-3">
-              <Factory className="w-4 h-4 text-blue-400" />
-              <div>
+            <div className="flex items-center gap-3 flex-1 min-w-0">
+              <Factory className="w-4 h-4 text-blue-400 shrink-0" />
+              <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-2">
                   <span className="text-white font-medium">
                     {importItem.itemClassName.replace(/^Desc_/, '').replace(/_C$/, '').replace(/_/g, ' ')}
                   </span>
-                  <span className="text-xs text-slate-400">
-                    {importItem.requiredAmount.toFixed(1)}/min
-                  </span>
+                  {editingId === importItem._id ? (
+                    <div className="flex flex-col gap-1 mt-1">
+                      <div className="flex items-center gap-1">
+                        <input
+                          type="number"
+                          min="0.1"
+                          step="0.1"
+                          max={capacity?.max ?? undefined}
+                          value={editAmount}
+                          onChange={e => setEditAmount(e.target.value)}
+                          onKeyDown={e => {
+                            if (e.key === 'Enter') handleSaveEdit(importItem._id);
+                            if (e.key === 'Escape') cancelEdit();
+                          }}
+                          className={`w-24 px-2 py-0.5 text-xs bg-slate-700 border rounded text-white focus:outline-none focus:border-orange-400 ${
+                            capacity && parseFloat(editAmount) > capacity.max
+                              ? 'border-red-500'
+                              : 'border-slate-500'
+                          }`}
+                          autoFocus
+                        />
+                        <span className="text-xs text-slate-400">/min</span>
+                      </div>
+                      {capacityLoading && (
+                        <span className="text-xs text-slate-500">Loading capacity...</span>
+                      )}
+                      {capacity && !capacityLoading && (
+                        <div className="text-xs space-y-0.5">
+                          <div className="flex items-center gap-1">
+                            <span className="text-slate-400">Produces:</span>
+                            <span className="text-green-400 font-medium">{capacity.produced.toFixed(1)}/min</span>
+                          </div>
+                          <div className="flex items-center gap-1">
+                            <span className="text-slate-400">Allocated elsewhere:</span>
+                            <span className="text-yellow-400 font-medium">{capacity.allocatedElsewhere.toFixed(1)}/min</span>
+                          </div>
+                          <div className="flex items-center gap-1">
+                            <span className="text-slate-400">Available:</span>
+                            <span className={`font-medium ${capacity.max <= 0 ? 'text-red-400' : 'text-blue-400'}`}>
+                              {capacity.max.toFixed(1)}/min
+                            </span>
+                          </div>
+                          {capacity.produced === 0 && (
+                            <span className="text-orange-400">⚠ No production line found for this item</span>
+                          )}
+                          {parseFloat(editAmount) > capacity.max && capacity.max > 0 && (
+                            <span className="text-red-400">⚠ Exceeds available capacity</span>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  ) : (
+                    <span className="text-xs text-slate-400">
+                      {importItem.requiredAmount.toFixed(1)}/min
+                    </span>
+                  )}
                 </div>
                 <p className="text-xs text-slate-400">
                   From: {importItem.sourceFactoryId.name}
@@ -120,19 +258,58 @@ export default function ImportsList({ factoryId, onImportDeleted, refreshTrigger
               </div>
             </div>
 
-            <Button
-              size="sm"
-              variant="ghost"
-              className="text-red-400 hover:text-red-300 hover:bg-red-900/30"
-              onClick={() => handleDeleteImport(importItem._id)}
-              disabled={deleting === importItem._id}
-            >
-              {deleting === importItem._id ? (
-                <div className="w-3 h-3 border border-red-400 border-t-transparent rounded-full animate-spin" />
+            <div className="flex items-center gap-1 shrink-0">
+              {editingId === importItem._id ? (
+                <>
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    className="text-green-400 hover:text-green-300 hover:bg-green-900/30"
+                    onClick={() => handleSaveEdit(importItem._id)}
+                    disabled={saving}
+                  >
+                    {saving ? (
+                      <div className="w-3 h-3 border border-green-400 border-t-transparent rounded-full animate-spin" />
+                    ) : (
+                      <Check className="w-3 h-3" />
+                    )}
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    className="text-slate-400 hover:text-slate-300"
+                    onClick={cancelEdit}
+                    disabled={saving}
+                  >
+                    <X className="w-3 h-3" />
+                  </Button>
+                </>
               ) : (
-                <X className="w-3 h-3" />
+                <>
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    className="text-slate-400 hover:text-blue-300 hover:bg-blue-900/30"
+                    onClick={() => startEdit(importItem)}
+                  >
+                    <Pencil className="w-3 h-3" />
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    className="text-red-400 hover:text-red-300 hover:bg-red-900/30"
+                    onClick={() => handleDeleteImport(importItem._id)}
+                    disabled={deleting === importItem._id}
+                  >
+                    {deleting === importItem._id ? (
+                      <div className="w-3 h-3 border border-red-400 border-t-transparent rounded-full animate-spin" />
+                    ) : (
+                      <X className="w-3 h-3" />
+                    )}
+                  </Button>
+                </>
               )}
-            </Button>
+            </div>
           </div>
         ))}
       </div>

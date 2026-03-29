@@ -111,6 +111,55 @@ export async function GET(
   }
 }
 
+// Update an import
+export async function PATCH(
+  request: NextRequest,
+  { params }: { params: { id: string } }
+) {
+  try {
+    const session = await getServerSession(authOptions);
+    if (!session?.user?.id) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
+    await dbConnect();
+    const body = await request.json();
+    const { importId, requiredAmount, sourceFactoryId } = body;
+
+    if (!importId || requiredAmount === undefined) {
+      return NextResponse.json(
+        { error: 'Missing required fields: importId, requiredAmount' },
+        { status: 400 }
+      );
+    }
+
+    const update: Record<string, unknown> = { requiredAmount };
+    if (sourceFactoryId) update.sourceFactoryId = sourceFactoryId;
+
+    const updated = await FactoryImport.findOneAndUpdate(
+      { _id: importId, userId: session.user.id },
+      update,
+      { new: true }
+    ).populate('sourceFactoryId', 'name').lean();
+
+    if (!updated) {
+      return NextResponse.json(
+        { error: 'Import not found or not owned by user' },
+        { status: 404 }
+      );
+    }
+
+    return NextResponse.json({ success: true, import: updated });
+
+  } catch (error) {
+    console.error('Error updating factory import:', error);
+    return NextResponse.json(
+      { error: 'Failed to update import' },
+      { status: 500 }
+    );
+  }
+}
+
 // Delete an import
 export async function DELETE(
   request: NextRequest,

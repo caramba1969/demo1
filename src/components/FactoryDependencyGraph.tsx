@@ -2,34 +2,22 @@
 
 import React, { useEffect, useRef, useState } from 'react';
 import * as d3 from 'd3';
-import { RefreshCw, ZoomIn, ZoomOut, Home, Info } from 'lucide-react';
+import { RefreshCw, ZoomIn, ZoomOut, RotateCcw, Info } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+
+const GRID_SIZE = 40;
 
 interface Factory {
   id: string;
   name: string;
 }
 
-interface ProductionLine {
-  _id: string;
-  itemClassName: string;
-  targetQuantityPerMinute: number;
-  item?: {
-    name: string;
-  };
-}
-
 interface Import {
   _id: string;
-  sourceFactoryId: {
-    _id: string;
-    name: string;
-  };
+  sourceFactoryId: { _id: string; name: string };
   itemClassName: string;
   requiredAmount: number;
-  item?: {
-    name: string;
-  };
+  item?: { name: string };
 }
 
 interface GraphNode {
@@ -47,403 +35,449 @@ interface GraphLink {
   target: string | GraphNode;
   itemName: string;
   amount: number;
-  itemClassName: string;
 }
 
 interface FactoryDependencyGraphProps {
   factories: Factory[];
 }
 
+function snapToGrid(v: number): number {
+  return Math.round(v / GRID_SIZE) * GRID_SIZE;
+}
+
 export default function FactoryDependencyGraph({ factories }: FactoryDependencyGraphProps) {
   const svgRef = useRef<SVGSVGElement>(null);
-  const [graphData, setGraphData] = useState<{ nodes: GraphNode[], links: GraphLink[] }>({ nodes: [], links: [] });
+  const [graphData, setGraphData] = useState<{ nodes: GraphNode[]; links: GraphLink[] }>({ nodes: [], links: [] });
   const [loading, setLoading] = useState(false);
   const [selectedNode, setSelectedNode] = useState<GraphNode | null>(null);
   const simulationRef = useRef<d3.Simulation<GraphNode, GraphLink> | null>(null);
+  const zoomRef = useRef<d3.ZoomBehavior<SVGSVGElement, unknown> | null>(null);
 
-  // Load factory data and build graph
   const loadGraphData = async () => {
     if (factories.length === 0) return;
-    
     setLoading(true);
     try {
-      const nodes: GraphNode[] = factories.map(factory => ({
-        id: factory.id,
-        name: factory.name,
-        type: 'factory' as const
-      }));
-
+      const nodes: GraphNode[] = factories.map(f => ({ id: f.id, name: f.name, type: 'factory' as const }));
       const links: GraphLink[] = [];
 
-      // Load imports for each factory to build connections
       for (const factory of factories) {
         try {
-          const importsResponse = await fetch(`/api/factories/${factory.id}/imports`);
-          if (importsResponse.ok) {
-            const importsData = await importsResponse.json();
-            const imports: Import[] = importsData.imports || [];
-
-            imports.forEach(importItem => {
-              const sourceFactory = importItem.sourceFactoryId;
-              if (sourceFactory && sourceFactory._id) {
+          const res = await fetch(`/api/factories/${factory.id}/imports`);
+          if (res.ok) {
+            const data = await res.json();
+            (data.imports || [] as Import[]).forEach((imp: Import) => {
+              const src = imp.sourceFactoryId;
+              if (src?._id) {
                 links.push({
-                  source: sourceFactory._id,
+                  source: src._id,
                   target: factory.id,
-                  itemName: importItem.item?.name || importItem.itemClassName,
-                  amount: importItem.requiredAmount,
-                  itemClassName: importItem.itemClassName
+                  itemName: imp.item?.name || imp.itemClassName.replace(/^Desc_/, '').replace(/_C$/, '').replace(/_/g, ' '),
+                  amount: imp.requiredAmount,
                 });
               }
             });
           }
-        } catch (error) {
-          console.warn(`Failed to load imports for factory ${factory.id}:`, error);
-        }
+        } catch { /* ignore per-factory errors */ }
       }
 
       setGraphData({ nodes, links });
-    } catch (error) {
-      console.error('Error loading graph data:', error);
+    } catch (e) {
+      console.error('Error loading graph data:', e);
     } finally {
       setLoading(false);
     }
   };
 
-  // Initialize and update D3 visualization
   useEffect(() => {
     if (!svgRef.current || graphData.nodes.length === 0) return;
 
     const svg = d3.select(svgRef.current);
-    const container = svg.select('.graph-container');
-    
-    // Clear previous content
-    container.selectAll('*').remove();
+    svg.selectAll('.graph-container > *').remove();
+    svg.select('defs').remove();
 
     const width = svgRef.current.clientWidth;
-    const height = svgRef.current.clientHeight;    // Create zoom behavior
+    const height = svgRef.current.clientHeight;
+    const container = svg.select<SVGGElement>('.graph-container');
+
+    // ── Defs ──────────────────────────────────────────────────────────────
+    const defs = svg.append('defs');
+
+    // Grid pattern
+    defs.append('pattern')
+      .attr('id', 'grid')
+      .attr('width', GRID_SIZE)
+      .attr('height', GRID_SIZE)
+      .attr('patternUnits', 'userSpaceOnUse')
+      .append('path')
+      .attr('d', `M ${GRID_SIZE} 0 L 0 0 0 ${GRID_SIZE}`)
+      .attr('fill', 'none')
+      .attr('stroke', '#1e293b')
+      .attr('stroke-width', 1);
+
+    // Larger grid accent
+    defs.append('pattern')
+      .attr('id', 'grid-large')
+      .attr('width', GRID_SIZE * 4)
+      .attr('height', GRID_SIZE * 4)
+      .attr('patternUnits', 'userSpaceOnUse')
+      .append('path')
+      .attr('d', `M ${GRID_SIZE * 4} 0 L 0 0 0 ${GRID_SIZE * 4}`)
+      .attr('fill', 'none')
+      .attr('stroke', '#293548')
+      .attr('stroke-width', 1);
+
+    // Drop shadow for cards
+    const shadow = defs.append('filter').attr('id', 'card-shadow')
+      .attr('x', '-20%').attr('y', '-30%').attr('width', '140%').attr('height', '160%');
+    shadow.append('feDropShadow')
+      .attr('dx', 0).attr('dy', 4).attr('stdDeviation', 6)
+      .attr('flood-color', '#000').attr('flood-opacity', 0.6);
+
+    // Clean arrowhead marker
+    defs.append('marker')
+      .attr('id', 'arrow')
+      .attr('viewBox', '0 0 10 10')
+      .attr('refX', 9)
+      .attr('refY', 5)
+      .attr('markerWidth', 6)
+      .attr('markerHeight', 6)
+      .attr('orient', 'auto-start-reverse')
+      .append('path')
+      .attr('d', 'M 0 2 L 9 5 L 0 8 Z')
+      .attr('fill', '#f97316')
+      .attr('opacity', 0.8);
+
+    // ── Grid background (inside container so it pans/zooms with content) ──
+    container.append('rect')
+      .attr('class', 'grid-bg')
+      .attr('x', -5000).attr('y', -5000)
+      .attr('width', 10000).attr('height', 10000)
+      .attr('fill', 'url(#grid-large)');
+    container.append('rect')
+      .attr('class', 'grid-bg')
+      .attr('x', -5000).attr('y', -5000)
+      .attr('width', 10000).attr('height', 10000)
+      .attr('fill', 'url(#grid)');
+
+    // ── Zoom ──────────────────────────────────────────────────────────────
     const zoom = d3.zoom<SVGSVGElement, unknown>()
-      .scaleExtent([0.1, 4])
+      .scaleExtent([0.2, 3])
       .on('zoom', (event: d3.D3ZoomEvent<SVGSVGElement, unknown>) => {
         container.attr('transform', event.transform.toString());
       });
+    zoomRef.current = zoom;
+    svg.call(zoom);
 
-    svg.call(zoom);    // Create simulation
+    // ── Simulation ────────────────────────────────────────────────────────
     const simulation = d3.forceSimulation<GraphNode>(graphData.nodes)
       .force('link', d3.forceLink<GraphNode, GraphLink>(graphData.links)
-        .id((d: GraphNode) => d.id)
-        .distance(200)
-        .strength(0.5))
-      .force('charge', d3.forceManyBody().strength(-800))
+        .id(d => d.id).distance(280).strength(0.3))
+      .force('charge', d3.forceManyBody().strength(-500))
       .force('center', d3.forceCenter(width / 2, height / 2))
-      .force('collision', d3.forceCollide().radius(80));
-
+      .force('collision', d3.forceCollide().radius(120))
+      .alphaDecay(0.06)
+      .on('end', () => {
+        // Once settled, pin every node at its current position so they never move again
+        graphData.nodes.forEach(d => {
+          d.fx = snapToGrid(d.x!);
+          d.fy = snapToGrid(d.y!);
+        });
+        node.attr('transform', d => `translate(${d.fx},${d.fy})`);
+      });
     simulationRef.current = simulation;
 
-    // Create arrow markers for directed edges
-    svg.select('defs').remove();
-    const defs = svg.append('defs');
-    
-    defs.append('marker')
-      .attr('id', 'arrowhead')
-      .attr('viewBox', '-0 -5 10 10')
-      .attr('refX', 25)
-      .attr('refY', 0)
-      .attr('orient', 'auto')
-      .attr('markerWidth', 8)
-      .attr('markerHeight', 8)
-      .attr('xoverflow', 'visible')
-      .append('svg:path')
-      .attr('d', 'M 0,-5 L 10 ,0 L 0,5')
-      .attr('fill', '#64748b')
-      .style('stroke', 'none');
+    // ── Links ─────────────────────────────────────────────────────────────
+    const cardW = 160;
+    const cardH = 52;
 
-    // Create links
-    const link = container
-      .append('g')
-      .attr('class', 'links')
-      .selectAll('g')
+    const linkG = container.append('g').attr('class', 'links');
+
+    const linkLine = linkG.selectAll<SVGLineElement, GraphLink>('line')
       .data(graphData.links)
-      .join('g')
-      .attr('class', 'link-group');    // Link lines
-    link.append('line')
-      .attr('class', 'link')
-      .attr('stroke', '#64748b')
-      .attr('stroke-width', (d: GraphLink) => Math.max(1, Math.min(8, d.amount / 20)))
-      .attr('stroke-dasharray', '5,5')
-      .attr('marker-end', 'url(#arrowhead)')
-      .attr('opacity', 0.6);
+      .join('line')
+      .attr('stroke', '#f97316')
+      .attr('stroke-width', d => Math.max(1.5, Math.min(5, d.amount / 30)))
+      .attr('stroke-opacity', 0.55)
+      .attr('marker-end', 'url(#arrow)');
 
-    // Link labels
-    const linkLabels = link.append('g')
-      .attr('class', 'link-label');
-    
-    linkLabels.append('rect')
-      .attr('class', 'link-label-bg')
-      .attr('fill', '#1e293b')
-      .attr('stroke', '#475569')
+    // Link label groups
+    const linkLabelG = linkG.selectAll<SVGGElement, GraphLink>('g')
+      .data(graphData.links)
+      .join('g');
+
+    linkLabelG.append('rect')
+      .attr('fill', '#0f172a')
+      .attr('stroke', '#334155')
       .attr('stroke-width', 1)
       .attr('rx', 4);
-      linkLabels.append('text')
-      .attr('class', 'link-label-text')
+
+    linkLabelG.append('text')
+      .attr('class', 'link-text')
       .attr('text-anchor', 'middle')
-      .attr('dy', '0.35em')
-      .attr('fill', '#e2e8f0')
-      .attr('font-size', '12px')
-      .attr('font-weight', 'bold')
-      .text((d: GraphLink) => `${d.itemName}: ${d.amount.toFixed(1)}/min`);    // Position link label backgrounds
-    linkLabels.selectAll('.link-label-bg')
-      .each(function() {
-        const rectElement = this as SVGRectElement;
-        const parentNode = rectElement.parentNode as SVGGElement;
-        const textElement = d3.select(parentNode).select('.link-label-text').node() as SVGTextElement;
-        if (textElement) {
-          const bbox = textElement.getBBox();
-          d3.select(rectElement)
-            .attr('x', bbox.x - 4)
-            .attr('y', bbox.y - 2)
-            .attr('width', bbox.width + 8)
-            .attr('height', bbox.height + 4);
-        }
-      });    // Create nodes
-    const node = container
-      .append('g')
-      .attr('class', 'nodes')
-      .selectAll('g')
+      .attr('dominant-baseline', 'middle')
+      .attr('fill', '#94a3b8')
+      .attr('font-size', '10px')
+      .attr('font-family', 'system-ui, sans-serif')
+      .attr('pointer-events', 'none')
+      .text(d => `${d.itemName}  ${d.amount.toFixed(1)}/min`);
+
+    // ── Nodes ─────────────────────────────────────────────────────────────
+    const node = container.append('g').attr('class', 'nodes')
+      .selectAll<SVGGElement, GraphNode>('g')
       .data(graphData.nodes)
       .join('g')
       .attr('class', 'node')
+      .style('cursor', 'grab')
       .call(d3.drag<SVGGElement, GraphNode>()
-        .on('start', dragstarted)
-        .on('drag', dragged)
-        .on('end', dragended) as any)
-      .on('click', (event: MouseEvent, d: GraphNode) => {
+        .on('start', (_event, d) => {
+          // Do NOT restart simulation — keeps all other nodes frozen
+          d.fx = d.x;
+          d.fy = d.y;
+        })
+        .on('drag', (event, d) => {
+          d.fx = event.x;
+          d.fy = event.y;
+          d.x = event.x;
+          d.y = event.y;
+          // Manually update just this node and its connected edges
+          node.filter(n => n.id === d.id).attr('transform', `translate(${d.fx},${d.fy})`);
+          linkLine
+            .attr('x1', l => {
+              const s = l.source as GraphNode; const t = l.target as GraphNode;
+              return edgePoint(s.x!, s.y!, t.x!, t.y!, cardW, cardH).x1;
+            })
+            .attr('y1', l => {
+              const s = l.source as GraphNode; const t = l.target as GraphNode;
+              return edgePoint(s.x!, s.y!, t.x!, t.y!, cardW, cardH).y1;
+            })
+            .attr('x2', l => {
+              const s = l.source as GraphNode; const t = l.target as GraphNode;
+              return edgePoint(s.x!, s.y!, t.x!, t.y!, cardW, cardH).x2;
+            })
+            .attr('y2', l => {
+              const s = l.source as GraphNode; const t = l.target as GraphNode;
+              return edgePoint(s.x!, s.y!, t.x!, t.y!, cardW, cardH).y2;
+            });
+          linkLabelG.attr('transform', l => {
+            const s = l.source as GraphNode; const t = l.target as GraphNode;
+            return `translate(${(s.x! + t.x!) / 2},${(s.y! + t.y!) / 2})`;
+          });
+        })
+        .on('end', (event, d) => {
+          // Snap to grid on drop
+          d.fx = snapToGrid(event.x);
+          d.fy = snapToGrid(event.y);
+          d.x = d.fx;
+          d.y = d.fy;
+          node.filter(n => n.id === d.id).attr('transform', `translate(${d.fx},${d.fy})`);
+          // Redraw edges with final snapped position
+          linkLine
+            .attr('x1', l => { const s = l.source as GraphNode; const t = l.target as GraphNode; return edgePoint(s.x!, s.y!, t.x!, t.y!, cardW, cardH).x1; })
+            .attr('y1', l => { const s = l.source as GraphNode; const t = l.target as GraphNode; return edgePoint(s.x!, s.y!, t.x!, t.y!, cardW, cardH).y1; })
+            .attr('x2', l => { const s = l.source as GraphNode; const t = l.target as GraphNode; return edgePoint(s.x!, s.y!, t.x!, t.y!, cardW, cardH).x2; })
+            .attr('y2', l => { const s = l.source as GraphNode; const t = l.target as GraphNode; return edgePoint(s.x!, s.y!, t.x!, t.y!, cardW, cardH).y2; });
+          linkLabelG.attr('transform', l => {
+            const s = l.source as GraphNode; const t = l.target as GraphNode;
+            return `translate(${(s.x! + t.x!) / 2},${(s.y! + t.y!) / 2})`;
+          });
+        }) as any)
+      .on('click', (event, d) => {
         event.stopPropagation();
         setSelectedNode(d);
+      })
+      .on('dblclick', (event) => {
+        event.stopPropagation();
       });
 
-    // Node circles
-    node.append('circle')
-      .attr('r', 30)
-      .attr('fill', '#f97316')
-      .attr('stroke', '#ea580c')
-      .attr('stroke-width', 3);    // Node labels
-    node.append('text')
-      .attr('text-anchor', 'middle')
-      .attr('dy', '0.35em')
-      .attr('fill', 'white')
-      .attr('font-size', '12px')
-      .attr('font-weight', 'bold')
-      .attr('pointer-events', 'none')
-      .text((d: GraphNode) => d.name.length > 10 ? d.name.slice(0, 10) + '...' : d.name);    // Update positions on simulation tick
-    simulation.on('tick', () => {
-      link.select('line')
-        .attr('x1', (d: GraphLink) => (d.source as GraphNode).x!)
-        .attr('y1', (d: GraphLink) => (d.source as GraphNode).y!)
-        .attr('x2', (d: GraphLink) => (d.target as GraphNode).x!)
-        .attr('y2', (d: GraphLink) => (d.target as GraphNode).y!);
+    // Card shadow rect (offset)
+    node.append('rect')
+      .attr('x', -cardW / 2 + 2).attr('y', -cardH / 2 + 3)
+      .attr('width', cardW).attr('height', cardH)
+      .attr('rx', 8)
+      .attr('fill', '#000')
+      .attr('opacity', 0.35);
 
-      linkLabels
-        .attr('transform', (d: GraphLink) => {
-          const source = d.source as GraphNode;
-          const target = d.target as GraphNode;
-          const x = (source.x! + target.x!) / 2;
-          const y = (source.y! + target.y!) / 2;
-          return `translate(${x}, ${y})`;
+    // Card body
+    node.append('rect')
+      .attr('x', -cardW / 2).attr('y', -cardH / 2)
+      .attr('width', cardW).attr('height', cardH)
+      .attr('rx', 8)
+      .attr('fill', '#1e293b')
+      .attr('stroke', '#334155')
+      .attr('stroke-width', 1.5);
+
+    // Left accent
+    node.append('rect')
+      .attr('x', -cardW / 2).attr('y', -cardH / 2)
+      .attr('width', 3).attr('height', cardH)
+      .attr('rx', 2)
+      .attr('fill', '#f97316');
+
+    // Icon
+    node.append('text')
+      .attr('x', -cardW / 2 + 18).attr('y', 1)
+      .attr('text-anchor', 'middle').attr('dominant-baseline', 'middle')
+      .attr('font-size', '15px').attr('pointer-events', 'none')
+      .text('🏭');
+
+    // Name
+    node.append('text')
+      .attr('x', -cardW / 2 + 34).attr('y', -8)
+      .attr('dominant-baseline', 'middle')
+      .attr('fill', '#f1f5f9').attr('font-size', '12px').attr('font-weight', '600')
+      .attr('font-family', 'system-ui, sans-serif').attr('pointer-events', 'none')
+      .text(d => d.name.length > 15 ? d.name.slice(0, 15) + '…' : d.name);
+
+    // Subtitle
+    node.append('text')
+      .attr('x', -cardW / 2 + 34).attr('y', 9)
+      .attr('dominant-baseline', 'middle')
+      .attr('fill', '#475569').attr('font-size', '10px')
+      .attr('font-family', 'system-ui, sans-serif').attr('pointer-events', 'none')
+      .text('Factory');
+
+    // ── Tick ──────────────────────────────────────────────────────────────
+    simulation.on('tick', () => {
+      // Compute edge endpoints stopping at card edge, not center
+      linkLine
+        .attr('x1', d => {
+          const s = d.source as GraphNode;
+          const t = d.target as GraphNode;
+          return edgePoint(s.x!, s.y!, t.x!, t.y!, cardW, cardH).x1;
+        })
+        .attr('y1', d => {
+          const s = d.source as GraphNode;
+          const t = d.target as GraphNode;
+          return edgePoint(s.x!, s.y!, t.x!, t.y!, cardW, cardH).y1;
+        })
+        .attr('x2', d => {
+          const s = d.source as GraphNode;
+          const t = d.target as GraphNode;
+          return edgePoint(s.x!, s.y!, t.x!, t.y!, cardW, cardH).x2;
+        })
+        .attr('y2', d => {
+          const s = d.source as GraphNode;
+          const t = d.target as GraphNode;
+          return edgePoint(s.x!, s.y!, t.x!, t.y!, cardW, cardH).y2;
         });
 
-      node.attr('transform', (d: GraphNode) => `translate(${d.x}, ${d.y})`);
+      linkLabelG.attr('transform', d => {
+        const s = d.source as GraphNode;
+        const t = d.target as GraphNode;
+        return `translate(${(s.x! + t.x!) / 2},${(s.y! + t.y!) / 2})`;
+      });
+
+      // Size label bg after text renders
+      linkLabelG.each(function () {
+        const g = d3.select(this as SVGGElement);
+        const textEl = g.select<SVGTextElement>('.link-text').node();
+        if (textEl) {
+          const bb = textEl.getBBox();
+          g.select('rect')
+            .attr('x', bb.x - 5).attr('y', bb.y - 3)
+            .attr('width', bb.width + 10).attr('height', bb.height + 6);
+        }
+      });
+
+      node.attr('transform', d => `translate(${d.x},${d.y})`);
     });
 
-    // Drag functions
-    function dragstarted(event: d3.D3DragEvent<SVGGElement, GraphNode, GraphNode>, d: GraphNode) {
-      if (!event.active) simulation.alphaTarget(0.3).restart();
-      d.fx = d.x;
-      d.fy = d.y;
-    }
-
-    function dragged(event: d3.D3DragEvent<SVGGElement, GraphNode, GraphNode>, d: GraphNode) {
-      d.fx = event.x;
-      d.fy = event.y;
-    }
-
-    function dragended(event: d3.D3DragEvent<SVGGElement, GraphNode, GraphNode>, d: GraphNode) {
-      if (!event.active) simulation.alphaTarget(0);
-      d.fx = null;
-      d.fy = null;
-    }    // Initial zoom to fit
-    const bounds = (container.node() as SVGGElement)?.getBBox();
-    if (bounds) {
-      const fullWidth = width;
-      const fullHeight = height;
-      const widthScale = fullWidth / bounds.width;
-      const heightScale = fullHeight / bounds.height;
-      const scale = Math.min(widthScale, heightScale) * 0.8;
-      const translateX = (fullWidth - bounds.width * scale) / 2 - bounds.x * scale;
-      const translateY = (fullHeight - bounds.height * scale) / 2 - bounds.y * scale;
-      
-      svg.transition().duration(750).call(
-        zoom.transform,
-        d3.zoomIdentity.translate(translateX, translateY).scale(scale)
-      );
-    }
-
-    return () => {
-      simulation.stop();
-    };
+    return () => { simulation.stop(); };
   }, [graphData]);
 
-  // Load data when factories change
-  useEffect(() => {
-    loadGraphData();
-  }, [factories]);
+  useEffect(() => { loadGraphData(); }, [factories]);
+
+  // ── Helpers ───────────────────────────────────────────────────────────
+  function edgePoint(x1: number, y1: number, x2: number, y2: number, w: number, h: number) {
+    const dx = x2 - x1;
+    const dy = y2 - y1;
+    const len = Math.sqrt(dx * dx + dy * dy) || 1;
+    const hw = w / 2 + 4;
+    const hh = h / 2 + 4;
+    // Clip on source card edge
+    const tSrc = Math.min(Math.abs(hw / (dx || 0.001)), Math.abs(hh / (dy || 0.001)));
+    const sx = x1 + (dx / len) * Math.min(len * tSrc, hw);
+    const sy = y1 + (dy / len) * Math.min(len * tSrc, hh);
+    // Clip on target card edge (come in from target side)
+    const tTgt = Math.min(Math.abs(hw / (dx || 0.001)), Math.abs(hh / (dy || 0.001)));
+    const tx = x2 - (dx / len) * Math.min(len * tTgt, hw + 14); // extra for arrowhead
+    const ty = y2 - (dy / len) * Math.min(len * tTgt, hh + 14);
+    return { x1: sx, y1: sy, x2: tx, y2: ty };
+  }
 
   const handleZoomIn = () => {
-    if (svgRef.current) {
-      d3.select(svgRef.current).transition().call(
-        d3.zoom<SVGSVGElement, unknown>().scaleBy,
-        1.5
-      );
-    }
+    if (svgRef.current && zoomRef.current)
+      d3.select(svgRef.current).transition().call(zoomRef.current.scaleBy, 1.4);
   };
-
   const handleZoomOut = () => {
-    if (svgRef.current) {
-      d3.select(svgRef.current).transition().call(
-        d3.zoom<SVGSVGElement, unknown>().scaleBy,
-        1 / 1.5
-      );
-    }
+    if (svgRef.current && zoomRef.current)
+      d3.select(svgRef.current).transition().call(zoomRef.current.scaleBy, 1 / 1.4);
   };
   const handleResetView = () => {
-    if (svgRef.current) {
-      const svg = d3.select(svgRef.current);
-      const container = svg.select('.graph-container');
-      const bounds = (container.node() as SVGGElement)?.getBBox();
-      
-      if (bounds) {
-        const width = svgRef.current.clientWidth;
-        const height = svgRef.current.clientHeight;
-        const widthScale = width / bounds.width;
-        const heightScale = height / bounds.height;
-        const scale = Math.min(widthScale, heightScale) * 0.8;
-        const translateX = (width - bounds.width * scale) / 2 - bounds.x * scale;
-        const translateY = (height - bounds.height * scale) / 2 - bounds.y * scale;
-        
-        svg.transition().duration(750).call(
-          d3.zoom<SVGSVGElement, unknown>().transform,
-          d3.zoomIdentity.translate(translateX, translateY).scale(scale)
-        );
-      }
-    }
+    if (svgRef.current && zoomRef.current)
+      d3.select(svgRef.current).transition().duration(500).call(zoomRef.current.transform, d3.zoomIdentity);
   };
 
   return (
     <div className="relative w-full h-full bg-slate-950">
       {/* Controls */}
       <div className="absolute top-4 left-4 z-10 flex gap-2">
-        <Button
-          variant="outline"
-          size="sm"
-          onClick={loadGraphData}
-          disabled={loading}
-          className="bg-slate-800 border-slate-600 hover:bg-slate-700"
-        >
+        <Button variant="outline" size="sm" onClick={loadGraphData} disabled={loading}
+          className="bg-slate-800 border-slate-700 hover:bg-slate-700 text-slate-200">
           <RefreshCw className={`w-4 h-4 mr-2 ${loading ? 'animate-spin' : ''}`} />
           Refresh
         </Button>
-        <Button
-          variant="outline"
-          size="sm"
-          onClick={handleZoomIn}
-          className="bg-slate-800 border-slate-600 hover:bg-slate-700"
-        >
+        <Button variant="outline" size="sm" onClick={handleZoomIn}
+          className="bg-slate-800 border-slate-700 hover:bg-slate-700 text-slate-200">
           <ZoomIn className="w-4 h-4" />
         </Button>
-        <Button
-          variant="outline"
-          size="sm"
-          onClick={handleZoomOut}
-          className="bg-slate-800 border-slate-600 hover:bg-slate-700"
-        >
+        <Button variant="outline" size="sm" onClick={handleZoomOut}
+          className="bg-slate-800 border-slate-700 hover:bg-slate-700 text-slate-200">
           <ZoomOut className="w-4 h-4" />
         </Button>
-        <Button
-          variant="outline"
-          size="sm"
-          onClick={handleResetView}
-          className="bg-slate-800 border-slate-600 hover:bg-slate-700"
-        >
-          <Home className="w-4 h-4" />
+        <Button variant="outline" size="sm" onClick={handleResetView}
+          className="bg-slate-800 border-slate-700 hover:bg-slate-700 text-slate-200">
+          <RotateCcw className="w-4 h-4" />
         </Button>
       </div>
 
       {/* Legend */}
-      <div className="absolute top-4 right-4 z-10 bg-slate-800 border border-slate-600 rounded-lg p-4 max-w-sm">
+      <div className="absolute top-4 right-4 z-10 bg-slate-900 border border-slate-700 rounded-lg p-4 text-xs">
         <div className="flex items-center gap-2 mb-3">
-          <Info className="w-4 h-4 text-blue-400" />
-          <h3 className="text-sm font-semibold text-white">Legend</h3>
+          <Info className="w-3.5 h-3.5 text-slate-400" />
+          <span className="text-slate-300 font-medium">Controls</span>
         </div>
-        <div className="space-y-2 text-xs text-slate-300">
-          <div className="flex items-center gap-2">
-            <div className="w-4 h-4 bg-orange-500 rounded-full"></div>
-            <span>Factory</span>
-          </div>
-          <div className="flex items-center gap-2">
-            <div className="w-8 h-0 border-t-2 border-dashed border-slate-400"></div>
-            <span>Import/Export Flow</span>
-          </div>
-          <div className="text-xs text-slate-400 mt-2">
-            • Drag nodes to reposition<br/>
-            • Click nodes for details<br/>
-            • Line thickness = flow amount
-          </div>
+        <div className="space-y-1.5 text-slate-400">
+          <p>Drag → move &amp; snap to grid</p>
+          <p>Scroll → zoom</p>
+          <p>Pan → drag background</p>
         </div>
       </div>
 
-      {/* Selected Node Info */}
+      {/* Selected node info */}
       {selectedNode && (
-        <div className="absolute bottom-4 left-4 z-10 bg-slate-800 border border-slate-600 rounded-lg p-4 max-w-sm">
-          <h3 className="text-sm font-semibold text-white mb-2">{selectedNode.name}</h3>
-          <div className="text-xs text-slate-300">
-            <p>Factory ID: {selectedNode.id}</p>
-            <p>Type: {selectedNode.type}</p>
-          </div>
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => setSelectedNode(null)}
-            className="mt-2 bg-slate-700 border-slate-600 hover:bg-slate-600"
-          >
+        <div className="absolute bottom-4 left-4 z-10 bg-slate-900 border border-slate-700 rounded-lg p-4 min-w-48">
+          <p className="text-sm font-semibold text-white mb-1">{selectedNode.name}</p>
+          <p className="text-xs text-slate-400 mb-3">Factory</p>
+          <Button variant="outline" size="sm" onClick={() => setSelectedNode(null)}
+            className="w-full bg-slate-800 border-slate-600 hover:bg-slate-700 text-slate-200">
             Close
           </Button>
         </div>
       )}
 
-      {/* SVG Container */}
-      <svg
-        ref={svgRef}
-        className="w-full h-full cursor-grab active:cursor-grabbing"
-        onClick={() => setSelectedNode(null)}
-      >
-        <g className="graph-container"></g>
+      {/* SVG */}
+      <svg ref={svgRef} className="w-full h-full cursor-grab active:cursor-grabbing"
+        onClick={() => setSelectedNode(null)}>
+        <g className="graph-container" />
       </svg>
 
-      {/* Empty State */}
+      {/* Empty state */}
       {graphData.nodes.length === 0 && !loading && (
-        <div className="absolute inset-0 flex items-center justify-center">
-          <div className="text-center text-slate-400">
-            <div className="w-16 h-16 mx-auto mb-4 opacity-50">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                <circle cx="12" cy="12" r="3"/>
-                <path d="M12 1v6m0 6v6"/>
-                <path d="m21 12-6-3 6-3"/>
-                <path d="m3 12 6 3-6 3"/>
-              </svg>
-            </div>
-            <p className="text-lg font-medium mb-2">No connections found</p>
-            <p className="text-sm">
-              Create some imports between factories to see their relationships
-            </p>
+        <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+          <div className="text-center text-slate-500">
+            <p className="text-base font-medium mb-1">No connections found</p>
+            <p className="text-sm">Add imports between factories to see the graph</p>
           </div>
         </div>
       )}
