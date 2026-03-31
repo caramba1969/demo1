@@ -55,6 +55,7 @@ export default function ExportsList({ factoryId, refreshTrigger }: ExportsListPr
 
   // Group exports by target factory and item
   const groupedExports = exports.reduce((acc, exp) => {
+    if (!exp.targetFactoryId) return acc;
     const factoryKey = exp.targetFactoryId._id;
     const itemKey = exp.itemClassName;
     
@@ -77,7 +78,7 @@ export default function ExportsList({ factoryId, refreshTrigger }: ExportsListPr
     return acc;
   }, {} as Record<string, { factoryName: string; items: Record<string, { itemName: string; totalAmount: number }> }>);
 
-  const totalExports = exports.reduce((sum, exp) => sum + exp.requiredAmount, 0);
+  const totalExports = exports.reduce((sum, exp) => exp.targetFactoryId ? sum + exp.requiredAmount : sum, 0);
 
   if (exports.length === 0) {
     return (
