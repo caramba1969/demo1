@@ -1,7 +1,7 @@
 'use client';
 
-import React from 'react';
-import { Factory, GripVertical, Settings, Trash2, AlertTriangle, CheckCircle } from 'lucide-react';
+import React, { useCallback } from 'react';
+import { Factory, GripVertical, Settings, Trash2, AlertTriangle, CheckCircle, LayoutGrid } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useSortable } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
@@ -22,6 +22,8 @@ interface FactoryNavigationCardProps {
   onDelete: (id: string) => void;
   onEdit?: (id: string) => void;
   status?: FactoryStatus;
+  isOnCanvas?: boolean;
+  draggableToCanvas?: boolean;
 }
 
 export default function FactoryNavigationCard({
@@ -30,7 +32,9 @@ export default function FactoryNavigationCard({
   onSelect,
   onDelete,
   onEdit,
-  status
+  status,
+  isOnCanvas,
+  draggableToCanvas = false,
 }: FactoryNavigationCardProps) {
   const {
     attributes,
@@ -62,14 +66,27 @@ export default function FactoryNavigationCard({
     onSelect(factory.id);
   };
 
+  // HTML5 drag for dragging factory onto the flow canvas
+  const handleNativeDragStart = useCallback(
+    (e: React.DragEvent) => {
+      if (!draggableToCanvas || isOnCanvas) return;
+      e.dataTransfer.setData('application/factory-id', factory.id);
+      e.dataTransfer.effectAllowed = 'copy';
+    },
+    [factory.id, draggableToCanvas, isOnCanvas]
+  );
+
   return (    <div
       ref={setNodeRef}
       style={style}
+      draggable={draggableToCanvas && !isOnCanvas}
+      onDragStart={handleNativeDragStart}
       className={`
         group relative bg-slate-800 rounded-lg p-3 cursor-pointer
         transition-all duration-200 hover:border-slate-600 hover:bg-slate-750
         ${isActive ? 'border border-blue-500 bg-blue-900/20' : status && !status.isSatisfied ? 'border border-red-500/30' : 'border border-slate-700'}
         ${isDragging ? 'opacity-50 z-50' : ''}
+        ${draggableToCanvas && !isOnCanvas ? 'cursor-grab active:cursor-grabbing' : ''}
       `}
       onClick={handleSelect}
     >
@@ -123,6 +140,18 @@ export default function FactoryNavigationCard({
               }`}>
                 {status.isSatisfied ? '✓' : `${status.missingCount} missing`}
               </span>
+            )}
+            {draggableToCanvas && (
+              isOnCanvas ? (
+                <span className="text-xs px-1 rounded text-orange-400 bg-orange-900/20 flex items-center gap-0.5">
+                  <LayoutGrid className="w-2.5 h-2.5" />
+                  on canvas
+                </span>
+              ) : (
+                <span className="text-xs px-1 rounded text-slate-500 bg-slate-700/50">
+                  drag to canvas
+                </span>
+              )
             )}
           </div>
         </div>

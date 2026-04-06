@@ -12,7 +12,9 @@ const FactoryImportSchema = new mongoose.Schema({
   requiredAmount: { type: Number, required: true },
   userId: { type: String, required: true, index: true },
   createdAt: { type: Date, default: Date.now },
-  active: { type: Boolean, default: true }
+  active: { type: Boolean, default: true },
+  sourceProductionLineId: { type: String, required: false, default: null },
+  targetProductionLineId: { type: String, required: false, default: null },
 });
 
 const FactoryImport = mongoose.models.FactoryImport || mongoose.model('FactoryImport', FactoryImportSchema);
@@ -31,7 +33,7 @@ export async function POST(
     await dbConnect();
     const factoryId = params.id;
     const body = await request.json();
-    const { sourceFactoryId, itemClassName, requiredAmount } = body;    // Validate input
+    const { sourceFactoryId, itemClassName, requiredAmount, sourceProductionLineId, targetProductionLineId } = body;    // Validate input
     if (!sourceFactoryId || !itemClassName || !requiredAmount) {
       return NextResponse.json(
         { error: 'Missing required fields: sourceFactoryId, itemClassName, requiredAmount' },
@@ -49,8 +51,10 @@ export async function POST(
     let factoryImport;
     
     if (existingImport) {
-      // Update existing import amount
+      // Update existing import amount and PL routing if provided
       existingImport.requiredAmount = requiredAmount;
+      if (sourceProductionLineId) existingImport.sourceProductionLineId = sourceProductionLineId;
+      if (targetProductionLineId) existingImport.targetProductionLineId = targetProductionLineId;
       factoryImport = await existingImport.save();
     } else {
       // Create new import record
@@ -60,7 +64,9 @@ export async function POST(
         itemClassName,
         requiredAmount,
         userId: session.user.id,
-        active: true
+        active: true,
+        ...(sourceProductionLineId && { sourceProductionLineId }),
+        ...(targetProductionLineId && { targetProductionLineId }),
       });
       await factoryImport.save();
     }

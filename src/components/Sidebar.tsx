@@ -49,6 +49,7 @@ interface SidebarProps {
   onReorderFactories: (factories: Factory[]) => void;
   onEditFactory?: (id: string) => void;
   factoryStatuses?: Map<string, FactoryStatus>;
+  canvasFactoryIds?: Set<string>;
 }
 
 export const Sidebar: FC<SidebarProps> = ({ 
@@ -59,7 +60,8 @@ export const Sidebar: FC<SidebarProps> = ({
   onDeleteFactory,
   onReorderFactories,
   onEditFactory,
-  factoryStatuses
+  factoryStatuses,
+  canvasFactoryIds
 }) => {
   const { data: session, status } = useSession();
   const [showOnlyUnsatisfied, setShowOnlyUnsatisfied] = useState(false);
@@ -254,6 +256,8 @@ export const Sidebar: FC<SidebarProps> = ({
                                 onDelete={onDeleteFactory}
                                 onEdit={onEditFactory}
                                 status={factoryStatuses?.get(factory.id)}
+                                isOnCanvas={canvasFactoryIds?.has(factory.id)}
+                                draggableToCanvas={!!canvasFactoryIds}
                               />
                             ))}
                           </div>

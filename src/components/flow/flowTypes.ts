@@ -1,3 +1,15 @@
+export interface RecipeIngredient {
+  item: string;
+  amount: number;
+  name: string;
+}
+
+export interface RecipeProduct {
+  item: string;
+  amount: number;
+  name: string;
+}
+
 export interface ProductionLineData {
   [key: string]: unknown;
   _id: string;
@@ -11,6 +23,9 @@ export interface ProductionLineData {
   buildingType?: string;
   powerConsumption?: number;
   active: boolean;
+  recipeTime?: number;
+  ingredients: RecipeIngredient[];
+  products: RecipeProduct[];
 }
 
 export interface FlowFactoryData {

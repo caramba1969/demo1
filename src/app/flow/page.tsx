@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import { useSession } from 'next-auth/react';
 import { Sidebar } from '@/components/Sidebar';
 import FlowCanvas from '@/components/flow/FlowCanvas';
+import { useFlowData } from '@/components/flow/useFlowData';
 import { AlertCircle, Loader2 } from 'lucide-react';
 
 interface Factory {
@@ -16,37 +17,31 @@ interface Factory {
 
 export default function FlowPage() {
   const { data: session, status } = useSession();
-  const [factories, setFactories] = useState<Factory[]>([]);
+  const [sidebarFactories, setSidebarFactories] = useState<Factory[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+
+  const flowData = useFlowData();
+
+  // Sync allFactories from flowData into sidebar format
+  useEffect(() => {
+    if (flowData.allFactories.length > 0) {
+      setSidebarFactories(
+        flowData.allFactories.map((f: { _id: string; name: string; order?: number }) => ({
+          id: f._id,
+          name: f.name,
+          order: f.order ?? 0,
+          tasks: [],
+          notes: [],
+        }))
+      );
+      setIsLoading(false);
+    }
+  }, [flowData.allFactories]);
 
   useEffect(() => {
     if (status === 'loading') return;
     if (status === 'unauthenticated') { setIsLoading(false); return; }
-
-    const load = async () => {
-      try {
-        setIsLoading(true);
-        const res = await fetch('/api/factories');
-        if (!res.ok) throw new Error('Failed to load factories');
-        const data = await res.json();
-        setFactories(
-          data.map((f: { _id: string; name: string; order?: number; tasks?: Factory['tasks']; notes?: Factory['notes'] }) => ({
-            id: f._id,
-            name: f.name,
-            order: f.order ?? 0,
-            tasks: f.tasks ?? [],
-            notes: f.notes ?? [],
-          }))
-        );
-      } catch {
-        setError('Failed to load factories');
-      } finally {
-        setIsLoading(false);
-      }
-    };
-
-    load();
   }, [status]);
 
   const handleAddFactory = async () => {
@@ -58,20 +53,18 @@ export default function FlowPage() {
     });
     if (!res.ok) return;
     const factory = await res.json();
-    setFactories(f => [...f, { id: factory._id, name: factory.name, order: factory.order ?? 0, tasks: [], notes: [] }]);
+    setSidebarFactories(f => [...f, { id: factory._id, name: factory.name, order: factory.order ?? 0, tasks: [], notes: [] }]);
+    // Also reload flow data so it picks up the new factory
+    flowData.reload();
   };
 
   const handleDeleteFactory = async (id: string) => {
-    await fetch('/api/factories', {
-      method: 'DELETE',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ id }),
-    });
-    setFactories(f => f.filter(x => x.id !== id));
+    await flowData.deleteFactory(id);
+    setSidebarFactories(f => f.filter(x => x.id !== id));
   };
 
   const handleReorderFactories = async (reordered: Factory[]) => {
-    setFactories(reordered);
+    setSidebarFactories(reordered);
     await fetch('/api/factories/reorder', {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
@@ -82,11 +75,12 @@ export default function FlowPage() {
   return (
     <>
       <Sidebar
-        factories={factories}
+        factories={sidebarFactories}
         onAddFactory={handleAddFactory}
         onSelectFactory={() => {}}
         onDeleteFactory={handleDeleteFactory}
         onReorderFactories={handleReorderFactories}
+        canvasFactoryIds={flowData.canvasFactoryIds}
       />
 
       <main className="ml-64 flex-1 overflow-hidden h-[calc(100vh-3rem)]">
@@ -94,7 +88,7 @@ export default function FlowPage() {
           {/* Header */}
           <div className="flex-shrink-0 px-6 py-3 border-b border-neutral-800 bg-neutral-900 flex items-center gap-3">
             <h1 className="text-xl font-bold text-white">Visual Flow Editor</h1>
-            <span className="text-neutral-500 text-sm">Double-click the canvas to create a factory · Drag from the palette to add production lines</span>
+            <span className="text-neutral-500 text-sm">Drag factories from the sidebar onto the canvas · Double-click to create a new factory</span>
           </div>
 
           {/* Canvas area */}
@@ -123,7 +117,7 @@ export default function FlowPage() {
                 </div>
               </div>
             ) : (
-              <FlowCanvas />
+              <FlowCanvas flowData={flowData} />
             )}
           </div>
         </div>
