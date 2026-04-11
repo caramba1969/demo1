@@ -17,10 +17,16 @@ export default function AddFactoryDialog({ isOpen, onClose, onFactoryAdded }: Ad
   const [factoryName, setFactoryName] = useState('');
   const [selectedLocationId, setSelectedLocationId] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [validationError, setValidationError] = useState('');
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!factoryName.trim() || isSubmitting) return;
+    if (!factoryName.trim()) {
+      setValidationError('Factory name is required');
+      return;
+    }
+    if (isSubmitting) return;
+    setValidationError('');
 
     setIsSubmitting(true);
     try {
@@ -61,6 +67,7 @@ export default function AddFactoryDialog({ isOpen, onClose, onFactoryAdded }: Ad
   const handleClose = () => {
     setFactoryName('');
     setSelectedLocationId(null);
+    setValidationError('');
     onClose();
   };
 
@@ -80,11 +87,17 @@ export default function AddFactoryDialog({ isOpen, onClose, onFactoryAdded }: Ad
             <Input
               placeholder="Enter factory name..."
               value={factoryName}
-              onChange={(e) => setFactoryName(e.target.value)}
-              className="bg-neutral-800 border-neutral-600 text-white"
+              onChange={(e) => {
+                setFactoryName(e.target.value);
+                if (validationError) setValidationError('');
+              }}
+              className={`bg-neutral-800 border-neutral-600 text-white ${validationError ? 'border-red-500' : ''}`}
               autoFocus
               disabled={isSubmitting}
             />
+            {validationError && (
+              <p className="text-sm text-red-400">{validationError}</p>
+            )}
           </div>
 
           <LocationSelector
@@ -98,13 +111,13 @@ export default function AddFactoryDialog({ isOpen, onClose, onFactoryAdded }: Ad
               variant="outline"
               onClick={handleClose}
               disabled={isSubmitting}
-              className="flex-1 border-neutral-600"
+              className="flex-1 bg-neutral-800 border-neutral-600 text-slate-200 hover:text-white hover:bg-neutral-700"
             >
               Cancel
             </Button>
             <Button
               type="submit"
-              disabled={!factoryName.trim() || isSubmitting}
+              disabled={isSubmitting}
               className="flex-1 bg-orange-600 hover:bg-orange-700"
             >
               {isSubmitting ? (

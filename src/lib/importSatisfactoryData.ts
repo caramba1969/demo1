@@ -1,5 +1,4 @@
 import fs from 'fs';
-import path from 'path';
 import { dbConnect } from '@/lib/mongodb';
 import Item from '@/lib/models/Item';
 import Recipe from '@/lib/models/Recipe';

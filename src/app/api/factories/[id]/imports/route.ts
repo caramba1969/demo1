@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
-import { authOptions } from '@/app/api/auth/[...nextauth]/route';
+import { authOptions } from '@/lib/auth';
 import { dbConnect } from '@/lib/mongodb';
 import mongoose from 'mongoose';
 
@@ -12,7 +12,9 @@ const FactoryImportSchema = new mongoose.Schema({
   requiredAmount: { type: Number, required: true },
   userId: { type: String, required: true, index: true },
   createdAt: { type: Date, default: Date.now },
-  active: { type: Boolean, default: true }
+  active: { type: Boolean, default: true },
+  sourceProductionLineId: { type: String, required: false, default: null },
+  targetProductionLineId: { type: String, required: false, default: null },
 });
 
 const FactoryImport = mongoose.models.FactoryImport || mongoose.model('FactoryImport', FactoryImportSchema);
@@ -20,7 +22,7 @@ const FactoryImport = mongoose.models.FactoryImport || mongoose.model('FactoryIm
 // Create an import relationship between factories
 export async function POST(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const session = await getServerSession(authOptions);
@@ -29,9 +31,9 @@ export async function POST(
     }
 
     await dbConnect();
-    const factoryId = params.id;
+    const factoryId = (await params).id;
     const body = await request.json();
-    const { sourceFactoryId, itemClassName, requiredAmount } = body;    // Validate input
+    const { sourceFactoryId, itemClassName, requiredAmount, sourceProductionLineId, targetProductionLineId } = body;    // Validate input
     if (!sourceFactoryId || !itemClassName || !requiredAmount) {
       return NextResponse.json(
         { error: 'Missing required fields: sourceFactoryId, itemClassName, requiredAmount' },
@@ -49,8 +51,10 @@ export async function POST(
     let factoryImport;
     
     if (existingImport) {
-      // Update existing import amount
+      // Update existing import amount and PL routing if provided
       existingImport.requiredAmount = requiredAmount;
+      if (sourceProductionLineId) existingImport.sourceProductionLineId = sourceProductionLineId;
+      if (targetProductionLineId) existingImport.targetProductionLineId = targetProductionLineId;
       factoryImport = await existingImport.save();
     } else {
       // Create new import record
@@ -60,7 +64,9 @@ export async function POST(
         itemClassName,
         requiredAmount,
         userId: session.user.id,
-        active: true
+        active: true,
+        ...(sourceProductionLineId && { sourceProductionLineId }),
+        ...(targetProductionLineId && { targetProductionLineId }),
       });
       await factoryImport.save();
     }
@@ -82,7 +88,7 @@ export async function POST(
 // Get all imports for a factory
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const session = await getServerSession(authOptions);
@@ -111,10 +117,59 @@ export async function GET(
   }
 }
 
+// Update an import
+export async function PATCH(
+  request: NextRequest,
+  { params: _params }: { params: Promise<{ id: string }> }
+) {
+  try {
+    const session = await getServerSession(authOptions);
+    if (!session?.user?.id) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
+    await dbConnect();
+    const body = await request.json();
+    const { importId, requiredAmount, sourceFactoryId } = body;
+
+    if (!importId || requiredAmount === undefined) {
+      return NextResponse.json(
+        { error: 'Missing required fields: importId, requiredAmount' },
+        { status: 400 }
+      );
+    }
+
+    const update: Record<string, unknown> = { requiredAmount };
+    if (sourceFactoryId) update.sourceFactoryId = sourceFactoryId;
+
+    const updated = await FactoryImport.findOneAndUpdate(
+      { _id: importId, userId: session.user.id },
+      update,
+      { new: true }
+    ).populate('sourceFactoryId', 'name').lean();
+
+    if (!updated) {
+      return NextResponse.json(
+        { error: 'Import not found or not owned by user' },
+        { status: 404 }
+      );
+    }
+
+    return NextResponse.json({ success: true, import: updated });
+
+  } catch (error) {
+    console.error('Error updating factory import:', error);
+    return NextResponse.json(
+      { error: 'Failed to update import' },
+      { status: 500 }
+    );
+  }
+}
+
 // Delete an import
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params: _params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const session = await getServerSession(authOptions);

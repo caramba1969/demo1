@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
-import { authOptions } from '@/app/api/auth/[...nextauth]/route';
+import { authOptions } from '@/lib/auth';
 import { dbConnect } from '@/lib/mongodb';
 import mongoose from 'mongoose';
 
@@ -20,7 +20,7 @@ const FactoryImport = mongoose.models.FactoryImport || mongoose.model('FactoryIm
 // Get all exports from this factory (imports where this factory is the source)
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const session = await getServerSession(authOptions);

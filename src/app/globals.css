@@ -145,3 +145,23 @@
   scrollbar-width: thin;
   scrollbar-color: rgb(115 115 115) rgb(64 64 64);
 }
+
+/* Flow canvas edge animation */
+@keyframes flow-dash {
+  to {
+    stroke-dashoffset: -18;
+  }
+}
+
+/* React Flow dark theme overrides */
+.flow-canvas .react-flow__background {
+  background-color: transparent;
+}
+.flow-canvas .react-flow__controls {
+  background: transparent;
+  border: none;
+  box-shadow: none;
+}
+.flow-canvas .react-flow__minimap {
+  border-radius: 0.5rem;
+}

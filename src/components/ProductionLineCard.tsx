@@ -4,6 +4,9 @@ import React, { useState, useEffect } from 'react';
 import { Factory, Zap, Clock, Trash2, Edit3, Package, ChevronDown, ChevronUp, AlertTriangle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
+import { toast } from 'sonner';
+import { formatRate } from '@/lib/utils';
 
 // Utility function to get item image URL from className
 const getItemImageUrl = (className: string) => {
@@ -105,8 +108,10 @@ export default function ProductionLineCard({
         notes: editNotes
       });
       setIsEditing(false);
+      toast.success('Production line saved');
     } catch (error) {
       console.error('Failed to update production line:', error);
+      toast.error('Failed to save — please try again');
     } finally {
       setLoading(false);
     }
@@ -143,8 +148,22 @@ export default function ProductionLineCard({
   // Calculate total exports for this item
   const totalExports = exports.reduce((sum, exp) => sum + exp.requiredAmount, 0);
   
-  // Net output is total production minus exports
-  const actualOutput = Math.max(0, totalOutput - totalExports);
+  // Calculate ingredient satisfaction ratio
+  let ingredientSatisfaction = 1;
+  if (productionLine.recipe?.ingredients && productionLine.buildingCount) {
+    const cycleTime = productionLine.recipe.time || 1;
+    for (const ingredient of productionLine.recipe.ingredients) {
+      const needed = (ingredient.amount * productionLine.buildingCount * 60) / cycleTime;
+      const available = availableInputs[ingredient.item] || 0;
+      if (needed > 0) {
+        ingredientSatisfaction = Math.min(ingredientSatisfaction, available / needed);
+      }
+    }
+  }
+  
+  // Net output considers ingredient satisfaction and exports
+  const satisfiedOutput = totalOutput * Math.min(1, ingredientSatisfaction);
+  const actualOutput = Math.max(0, satisfiedOutput - totalExports);
 
   return (
     <div className={`bg-slate-900 border border-slate-700 rounded-lg p-6 ${className} ${
@@ -169,13 +188,15 @@ export default function ProductionLineCard({
             <h3 className="font-semibold text-white text-lg">
               {productionLine.item?.name || 'Unknown Item'}
             </h3>
-            <p className="text-slate-400 text-sm">
-              {productionLine.recipe?.name || 'Unknown Recipe'}
-            </p>
+            {productionLine.recipe?.name && productionLine.recipe.name !== productionLine.item?.name && (
+              <p className="text-slate-400 text-sm">
+                {productionLine.recipe.name}
+              </p>
+            )}
             {isCollapsed && (
               <div className="flex items-center gap-4 mt-1">
                 <span className="text-xs text-slate-500">
-                  Target: {productionLine.targetQuantityPerMinute.toFixed(1)}/min
+                  Target: {formatRate(productionLine.targetQuantityPerMinute)}/min
                 </span>
                 <span className="text-xs text-slate-500">
                   Buildings: {productionLine.buildingCount || 0}
@@ -188,15 +209,19 @@ export default function ProductionLineCard({
           </div>
         </div>
           <div className="flex items-center gap-2">
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={toggleCollapse}
-            className="border-slate-600 text-slate-400 hover:bg-slate-700"
-            title={isCollapsed ? 'Expand' : 'Collapse'}
-          >
-            {isCollapsed ? <ChevronDown className="w-4 h-4" /> : <ChevronUp className="w-4 h-4" />}
-          </Button>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={toggleCollapse}
+                className="border-slate-600 text-slate-400 hover:bg-slate-700"
+              >
+                {isCollapsed ? <ChevronDown className="w-4 h-4" /> : <ChevronUp className="w-4 h-4" />}
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent>{isCollapsed ? 'Expand' : 'Collapse'}</TooltipContent>
+          </Tooltip>
           
           <Button
             variant="outline"
@@ -213,22 +238,32 @@ export default function ProductionLineCard({
           
           {!isEditing ? (
             <>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => setIsEditing(true)}
-                className="border-slate-600 text-slate-400 hover:bg-slate-700"
-              >
-                <Edit3 className="w-4 h-4" />
-              </Button>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={handleDelete}
-                className="border-red-500 text-red-400 hover:bg-red-500/10"
-              >
-                <Trash2 className="w-4 h-4" />
-              </Button>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setIsEditing(true)}
+                    className="border-slate-600 text-slate-400 hover:bg-slate-700"
+                  >
+                    <Edit3 className="w-4 h-4" />
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent>Edit</TooltipContent>
+              </Tooltip>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={handleDelete}
+                    className="border-red-500 text-red-400 hover:bg-red-500/10"
+                  >
+                    <Trash2 className="w-4 h-4" />
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent>Delete production line</TooltipContent>
+              </Tooltip>
             </>
           ) : (
             <>
@@ -274,7 +309,7 @@ export default function ProductionLineCard({
             />
           ) : (
             <p className="text-2xl font-bold text-white">
-              {productionLine.targetQuantityPerMinute.toFixed(1)}
+              {formatRate(productionLine.targetQuantityPerMinute)}
               <span className="text-sm font-normal text-slate-400 ml-1">/min</span>
             </p>
           )}
@@ -334,7 +369,7 @@ export default function ProductionLineCard({
             <div>
               <p className="text-slate-400 mb-1">Actual Output</p>
               <p className="text-white">
-                {actualOutput.toFixed(1)} items/min
+                {formatRate(actualOutput)} items/min
                 {efficiency < 100 && (
                   <span className="text-yellow-400 ml-1">({efficiency}%)</span>
                 )}
@@ -372,12 +407,12 @@ export default function ProductionLineCard({
                         )}                        <span>
                           {ingredient.amount}x {ingredient.name || ingredient.item}                          {buildingCount > 0 && (
                             <span className={`ml-1 font-mono ${isInsufficient ? 'text-red-300' : 'text-blue-400'}`}>
-                              (needs {ingredientPerMinute.toFixed(1)}/min)
+                              (needs {formatRate(ingredientPerMinute)}/min)
                             </span>
                           )}
                           {buildingCount > 0 && availableAmount > 0 && (
                             <span className="ml-1 text-green-400 font-mono text-xs">
-                              [have: {availableAmount.toFixed(1)}/min]
+                              [have: {formatRate(availableAmount)}/min]
                             </span>
                           )}
                         </span>                        {isInsufficient && deficit > 0 && (
@@ -388,8 +423,8 @@ export default function ProductionLineCard({
                         <span className="text-xs text-red-400 px-2 flex items-center gap-1">
                           <AlertTriangle className="w-3 h-3" />
                           {availableAmount > 0 
-                            ? `Short ${deficit.toFixed(1)}/min (have ${availableAmount.toFixed(1)}/min)`
-                            : `Missing ${deficit.toFixed(1)}/min input`
+                            ? `Short ${formatRate(deficit)}/min (have ${formatRate(availableAmount)}/min)`
+                            : `Missing ${formatRate(deficit)}/min input`
                           }
                         </span>
                       )}
@@ -436,10 +471,10 @@ export default function ProductionLineCard({
               <Package className="w-4 h-4 text-orange-400" />
               <span className="text-slate-400">Produces:</span>
               <span className="text-orange-400 font-medium">
-                {actualOutput.toFixed(1)}/min
+                {formatRate(actualOutput)}/min
                 {totalExports > 0 && (
                   <span className="text-xs text-slate-400 ml-1">
-                    (net: {totalOutput.toFixed(1)} - {totalExports.toFixed(1)} exports)
+                    ({formatRate(totalOutput)} produced, {formatRate(totalExports)} exported)
                   </span>
                 )}
               </span>

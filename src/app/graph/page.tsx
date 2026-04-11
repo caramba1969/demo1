@@ -15,7 +15,7 @@ interface Factory {
 }
 
 export default function GraphPage() {
-  const { data: session, status } = useSession();
+  const { status } = useSession();
   const [factories, setFactories] = useState<Factory[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);

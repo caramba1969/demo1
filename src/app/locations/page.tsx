@@ -3,6 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { Sidebar } from '@/components/Sidebar';
 import { 
   MapPin, 
   Plus, 
@@ -12,8 +13,7 @@ import {
   X, 
   Loader2,
   Map,
-  Save,
-  Factory as FactoryIcon
+  Save
 } from 'lucide-react';
 
 interface Location {
@@ -154,19 +154,24 @@ export default function LocationsPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-neutral-950 p-8">
-        <div className="max-w-4xl mx-auto">
-          <div className="flex items-center justify-center py-12">
-            <Loader2 className="w-8 h-8 animate-spin text-blue-400" />
-            <span className="ml-3 text-neutral-400">Loading locations...</span>
+      <>
+        <Sidebar factories={[]} onAddFactory={() => {}} onSelectFactory={() => {}} onDeleteFactory={() => {}} onReorderFactories={() => {}} />
+        <main className="ml-64 flex-1 overflow-y-auto h-[calc(100vh-3rem)] bg-neutral-950 p-8">
+          <div className="max-w-4xl mx-auto">
+            <div className="flex items-center justify-center py-12">
+              <Loader2 className="w-8 h-8 animate-spin text-blue-400" />
+              <span className="ml-3 text-neutral-400">Loading locations...</span>
+            </div>
           </div>
-        </div>
-      </div>
+        </main>
+      </>
     );
   }
 
   return (
-    <div className="min-h-screen bg-neutral-950 p-8">
+    <>
+      <Sidebar factories={[]} onAddFactory={() => {}} onSelectFactory={() => {}} onDeleteFactory={() => {}} onReorderFactories={() => {}} />
+      <main className="ml-64 flex-1 overflow-y-auto h-[calc(100vh-3rem)] bg-neutral-950 p-8">
       <div className="max-w-4xl mx-auto">
         {/* Header */}
         <div className="mb-8">
@@ -310,18 +315,9 @@ export default function LocationsPage() {
           )}
         </div>
 
-        {/* Back to Factories Link */}
-        <div className="mt-8 pt-6 border-t border-neutral-700">
-          <a 
-            href="/"
-            className="inline-flex items-center text-blue-400 hover:text-blue-300 transition-colors"
-          >
-            <FactoryIcon className="w-4 h-4 mr-2" />
-            Back to Factories
-          </a>
-        </div>
       </div>
-    </div>
+      </main>
+    </>
   );
 }
 
