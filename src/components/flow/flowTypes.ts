@@ -42,6 +42,10 @@ export interface FlowEdgeData {
   itemName: string;
   amount: number;
   itemClassName: string;
+  importId?: string;
+  targetFactoryId?: string;
+  sourceProductionLineId?: string;
+  targetProductionLineId?: string;
 }
 
 export interface PaletteItem {

@@ -1,4 +1,7 @@
+'use client';
+
 import React from "react";
+import { Sidebar } from "@/components/Sidebar";
 
 const changelogEntries = [
   {
@@ -54,7 +57,16 @@ const changelogEntries = [
 
 export default function ChangelogPage() {
   return (
-    <main className="max-w-2xl mx-auto py-8 px-4">
+    <>
+      <Sidebar
+        factories={[]}
+        onAddFactory={() => {}}
+        onSelectFactory={() => {}}
+        onDeleteFactory={() => {}}
+        onReorderFactories={() => {}}
+      />
+      <main className="ml-64 flex-1 overflow-y-auto h-[calc(100vh-3rem)] bg-neutral-950">
+        <div className="max-w-2xl mx-auto py-8 px-4">
       <h1 className="text-2xl font-bold mb-6">Change Log</h1>
       <div className="space-y-8">
         {changelogEntries.map((entry) => (
@@ -71,6 +83,8 @@ export default function ChangelogPage() {
           </section>
         ))}
       </div>
-    </main>
+      </div>
+      </main>
+    </>
   );
 }

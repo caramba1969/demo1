@@ -52,6 +52,14 @@ export default function ConnectionEdge({
 
   return (
     <>
+      {/* Invisible wide hit area for easy clicking */}
+      <path
+        d={edgePath}
+        fill="none"
+        stroke="transparent"
+        strokeWidth={20}
+        className="react-flow__edge-interaction"
+      />
       <BaseEdge
         id={id}
         path={edgePath}

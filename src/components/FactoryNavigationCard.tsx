@@ -119,7 +119,7 @@ export default function FactoryNavigationCard({
 
         {/* Factory Name and Status */}
         <div className="flex-1 min-w-0">          <div className="flex items-center gap-2">
-            <h4 className="text-sm font-medium text-white truncate">
+            <h4 className="text-sm font-medium text-white truncate" title={factory.name}>
               {factory.name}
             </h4>
             {status && !status.isSatisfied && (
@@ -129,9 +129,6 @@ export default function FactoryNavigationCard({
             )}
           </div>
           <div className="flex items-center gap-2">
-            <p className="text-xs text-slate-400">
-              Factory #{factory.order || 0}
-            </p>
             {status && (
               <span className={`text-xs px-1 rounded ${
                 status.isSatisfied 

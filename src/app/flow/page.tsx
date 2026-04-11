@@ -2,7 +2,6 @@
 
 import { useState, useEffect } from 'react';
 import { useSession } from 'next-auth/react';
-import { Sidebar } from '@/components/Sidebar';
 import FlowCanvas from '@/components/flow/FlowCanvas';
 import { useFlowData } from '@/components/flow/useFlowData';
 import { AlertCircle, Loader2 } from 'lucide-react';
@@ -74,21 +73,12 @@ export default function FlowPage() {
 
   return (
     <>
-      <Sidebar
-        factories={sidebarFactories}
-        onAddFactory={handleAddFactory}
-        onSelectFactory={() => {}}
-        onDeleteFactory={handleDeleteFactory}
-        onReorderFactories={handleReorderFactories}
-        canvasFactoryIds={flowData.canvasFactoryIds}
-      />
-
-      <main className="ml-64 flex-1 overflow-hidden h-[calc(100vh-3rem)]">
+      <main className="flex-1 overflow-hidden h-[calc(100vh-3rem)]">
         <div className="h-full flex flex-col">
           {/* Header */}
           <div className="flex-shrink-0 px-6 py-3 border-b border-neutral-800 bg-neutral-900 flex items-center gap-3">
             <h1 className="text-xl font-bold text-white">Visual Flow Editor</h1>
-            <span className="text-neutral-500 text-sm">Drag factories from the sidebar onto the canvas · Double-click to create a new factory</span>
+            <span className="text-neutral-500 text-sm">Double-click canvas to create a new factory · Drag items from the palette onto factories</span>
           </div>
 
           {/* Canvas area */}

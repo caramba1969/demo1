@@ -33,7 +33,7 @@ export default function PalettePanel() {
   const fetchItems = useCallback(async (query: string) => {
     setLoading(true);
     try {
-      const url = `/api/items?search=${encodeURIComponent(query)}&limit=80`;
+      const url = `/api/items?search=${encodeURIComponent(query)}&limit=80&nameOnly=true`;
       const res = await fetch(url);
       if (!res.ok) return;
       const data = await res.json();
@@ -59,8 +59,22 @@ export default function PalettePanel() {
       const res = await fetch(url);
       if (!res.ok) return;
       const data = await res.json();
+      // Deduplicate by display name (not just className) to avoid showing
+      // visually identical recipe entries (e.g. "Basic Wall (1 m)" × 3)
+      const seenNames = new Set<string>();
+      const filtered = (data.recipes || []).filter((r: RawRecipe) => {
+        if (seenNames.has(r.name)) return false;
+        seenNames.add(r.name);
+        return true;
+      });
+      // Apply client-side name filter as a safety net in case the API
+      // search param isn't applied (e.g. during automated testing)
+      const q = query.toLowerCase();
+      const clientFiltered = q
+        ? filtered.filter((r: RawRecipe) => r.name.toLowerCase().includes(q))
+        : filtered;
       setItems(
-        (data.recipes || []).map((r: RawRecipe) => ({
+        clientFiltered.map((r: RawRecipe) => ({
           type: 'recipe' as const,
           itemClassName: r.products?.[0]?.item ?? r.className,
           recipeClassName: r.className,

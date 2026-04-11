@@ -329,7 +329,7 @@ export default function EnhancedItemRecipeSelector({
               setSelectedRecipe(null);
               setSelectedExtraction(null);
             }}
-            className="flex items-center gap-2 flex-1 h-12"
+            className={`flex items-center gap-2 flex-1 h-12 ${mode !== 'recipe' ? 'text-slate-400 border-neutral-600 hover:text-white hover:bg-neutral-700' : ''}`}
           >
             <Package className="w-4 h-4" />
             Recipe Production
@@ -343,7 +343,7 @@ export default function EnhancedItemRecipeSelector({
               setSelectedRecipe(null);
               setSelectedExtraction(null);
             }}
-            className="flex items-center gap-2 flex-1 h-12"
+            className={`flex items-center gap-2 flex-1 h-12 ${mode !== 'extraction' ? 'text-slate-400 border-neutral-600 hover:text-white hover:bg-neutral-700' : ''}`}
           >
             <Drill className="w-4 h-4" />
             Resource Extraction
@@ -485,7 +485,7 @@ export default function EnhancedItemRecipeSelector({
                 <p className="text-sm text-neutral-400">Choose a production recipe</p>
               </div>
             </div>
-            <Button variant="outline" onClick={handleBack} className="h-10">
+            <Button variant="outline" onClick={handleBack} className="h-10 text-slate-200 border-neutral-600 hover:text-white hover:bg-neutral-700">
               ← Back
             </Button>
           </div>
@@ -546,7 +546,7 @@ export default function EnhancedItemRecipeSelector({
                 {mode === 'extraction' ? 'Set your extraction rate' : 'Set your production target'}
               </p>
             </div>
-            <Button variant="outline" onClick={handleBack} className="h-10">
+            <Button variant="outline" onClick={handleBack} className="h-10 text-slate-200 border-neutral-600 hover:text-white hover:bg-neutral-700">
               ← Back
             </Button>
           </div>

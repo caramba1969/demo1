@@ -2,8 +2,9 @@
 
 import React, { useEffect, useRef, useState } from 'react';
 import * as d3 from 'd3';
-import { RefreshCw, ZoomIn, ZoomOut, RotateCcw, Info } from 'lucide-react';
+import { RefreshCw, ZoomIn, ZoomOut, RotateCcw, Info, Maximize2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 
 const GRID_SIZE = 40;
 
@@ -183,6 +184,27 @@ export default function FactoryDependencyGraph({ factories }: FactoryDependencyG
           d.fy = snapToGrid(d.y!);
         });
         node.attr('transform', d => `translate(${d.fx},${d.fy})`);
+
+        // Auto-fit viewport to show all nodes
+        if (svgRef.current && zoomRef.current && graphData.nodes.length > 0) {
+          const padding = 80;
+          const cw = 160, ch = 52;
+          let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+          graphData.nodes.forEach(d => {
+            minX = Math.min(minX, d.fx! - cw / 2);
+            minY = Math.min(minY, d.fy! - ch / 2);
+            maxX = Math.max(maxX, d.fx! + cw / 2);
+            maxY = Math.max(maxY, d.fy! + ch / 2);
+          });
+          const bboxW = maxX - minX + padding * 2;
+          const bboxH = maxY - minY + padding * 2;
+          const scale = Math.min(width / bboxW, height / bboxH, 1.5);
+          const tx = width / 2 - (minX + maxX) / 2 * scale;
+          const ty = height / 2 - (minY + maxY) / 2 * scale;
+          d3.select(svgRef.current)
+            .transition().duration(500)
+            .call(zoomRef.current.transform, d3.zoomIdentity.translate(tx, ty).scale(scale));
+        }
       });
     simulationRef.current = simulation;
 
@@ -405,6 +427,31 @@ export default function FactoryDependencyGraph({ factories }: FactoryDependencyG
     return { x1: sx, y1: sy, x2: tx, y2: ty };
   }
 
+  const handleFitToScreen = () => {
+    if (!svgRef.current || !zoomRef.current || graphData.nodes.length === 0) return;
+    const width = svgRef.current.clientWidth;
+    const height = svgRef.current.clientHeight;
+    const padding = 80;
+    const cw = 160, ch = 52;
+    let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+    graphData.nodes.forEach(d => {
+      const x = d.fx ?? d.x ?? 0;
+      const y = d.fy ?? d.y ?? 0;
+      minX = Math.min(minX, x - cw / 2);
+      minY = Math.min(minY, y - ch / 2);
+      maxX = Math.max(maxX, x + cw / 2);
+      maxY = Math.max(maxY, y + ch / 2);
+    });
+    const bboxW = maxX - minX + padding * 2;
+    const bboxH = maxY - minY + padding * 2;
+    const scale = Math.min(width / bboxW, height / bboxH, 1.5);
+    const tx = width / 2 - (minX + maxX) / 2 * scale;
+    const ty = height / 2 - (minY + maxY) / 2 * scale;
+    d3.select(svgRef.current)
+      .transition().duration(500)
+      .call(zoomRef.current.transform, d3.zoomIdentity.translate(tx, ty).scale(scale));
+  };
+
   const handleZoomIn = () => {
     if (svgRef.current && zoomRef.current)
       d3.select(svgRef.current).transition().call(zoomRef.current.scaleBy, 1.4);
@@ -439,6 +486,15 @@ export default function FactoryDependencyGraph({ factories }: FactoryDependencyG
           className="bg-slate-800 border-slate-700 hover:bg-slate-700 text-slate-200">
           <RotateCcw className="w-4 h-4" />
         </Button>
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <Button variant="outline" size="sm" onClick={handleFitToScreen}
+              className="bg-slate-800 border-slate-700 hover:bg-slate-700 text-slate-200">
+              <Maximize2 className="w-4 h-4" />
+            </Button>
+          </TooltipTrigger>
+          <TooltipContent>Fit to screen</TooltipContent>
+        </Tooltip>
       </div>
 
       {/* Legend */}
@@ -459,10 +515,17 @@ export default function FactoryDependencyGraph({ factories }: FactoryDependencyG
         <div className="absolute bottom-4 left-4 z-10 bg-slate-900 border border-slate-700 rounded-lg p-4 min-w-48">
           <p className="text-sm font-semibold text-white mb-1">{selectedNode.name}</p>
           <p className="text-xs text-slate-400 mb-3">Factory</p>
-          <Button variant="outline" size="sm" onClick={() => setSelectedNode(null)}
-            className="w-full bg-slate-800 border-slate-600 hover:bg-slate-700 text-slate-200">
-            Close
-          </Button>
+          <div className="flex gap-2">
+            <Button variant="outline" size="sm" 
+              onClick={() => { window.location.href = `/?factory=${selectedNode.id}`; }}
+              className="flex-1 bg-orange-600 border-orange-600 hover:bg-orange-700 text-white">
+              Go to Factory
+            </Button>
+            <Button variant="outline" size="sm" onClick={() => setSelectedNode(null)}
+              className="bg-slate-800 border-slate-600 hover:bg-slate-700 text-slate-200">
+              Close
+            </Button>
+          </div>
         </div>
       )}
 

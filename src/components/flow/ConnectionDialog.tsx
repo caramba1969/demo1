@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { ArrowRight } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -33,6 +33,11 @@ export default function ConnectionDialog({
   const [amount, setAmount] = useState(suggestedAmount);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  // Sync amount when suggested value changes (e.g. dialog re-used for different connections)
+  useEffect(() => {
+    setAmount(suggestedAmount);
+  }, [suggestedAmount]);
 
   const handleConfirm = async () => {
     if (amount <= 0) { setError('Amount must be greater than 0'); return; }

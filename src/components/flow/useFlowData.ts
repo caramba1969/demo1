@@ -225,6 +225,8 @@ export function useFlowData() {
                 itemName: imp.itemName,
                 amount: imp.requiredAmount,
                 itemClassName: imp.itemClassName,
+                importId: imp._id,
+                targetFactoryId: f._id,
               },
             };
             if (imp.sourceProductionLineId) {

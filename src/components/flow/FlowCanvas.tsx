@@ -12,6 +12,7 @@ import {
   type Node,
   type Edge,
   type Connection,
+  ConnectionLineType,
 } from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
 import {
@@ -39,6 +40,28 @@ type FlowEdgeType = Edge<FlowEdgeData>;
 
 const nodeTypes: NodeTypes = { factoryNode: FactoryNode };
 const edgeTypes: EdgeTypes = { animatedFlow: ConnectionEdge };
+
+/**
+ * Custom DndKit sensor that ignores pointerdown events originating on
+ * React Flow handles, so connection-dragging is not intercepted by DndKit.
+ */
+class FlowAwarePointerSensor extends PointerSensor {
+  static activators = [
+    {
+      eventName: 'onPointerDown' as const,
+      handler: ({ nativeEvent }: React.PointerEvent): boolean => {
+        const target = nativeEvent.target as HTMLElement;
+        if (
+          target.classList.contains('react-flow__handle') ||
+          !!target.closest('.react-flow__handle')
+        ) {
+          return false;
+        }
+        return true;
+      },
+    },
+  ];
+}
 
 interface PendingConnection {
   sourceFactoryId: string;
@@ -116,7 +139,7 @@ export default function FlowCanvas({ flowData }: FlowCanvasProps) {
   const [activeDragItem, setActiveDragItem] = useState<PaletteItem | null>(null);
 
   const sensors = useSensors(
-    useSensor(PointerSensor, { activationConstraint: { distance: 6 } }),
+    useSensor(FlowAwarePointerSensor, { activationConstraint: { distance: 6 } }),
     useSensor(KeyboardSensor)
   );
 
@@ -273,6 +296,27 @@ export default function FlowCanvas({ flowData }: FlowCanvasProps) {
     },
   }));
 
+  // Build set of valid handle IDs from current nodes
+  const validHandleIds = new Set<string>();
+  for (const node of enrichedNodes) {
+    const factoryData = node.data as FlowFactoryData;
+    for (const pl of factoryData.productionLines) {
+      for (const ing of pl.ingredients) {
+        validHandleIds.add(`pl-in-${factoryData.factoryId}-${pl._id}-${ing.item}`);
+      }
+      for (const prod of pl.products) {
+        validHandleIds.add(`pl-out-${factoryData.factoryId}-${pl._id}-${prod.item}`);
+      }
+    }
+  }
+
+  // Filter out orphaned edges whose handles no longer exist
+  const validEdges = edges.filter(e => {
+    if (e.sourceHandle && !validHandleIds.has(e.sourceHandle)) return false;
+    if (e.targetHandle && !validHandleIds.has(e.targetHandle)) return false;
+    return true;
+  });
+
   // HTML5 drag-over for sidebar factory drops
   const [isDraggingOver, setIsDraggingOver] = useState(false);
 
@@ -339,7 +383,7 @@ export default function FlowCanvas({ flowData }: FlowCanvasProps) {
 
         <ReactFlow
           nodes={enrichedNodes as Node[]}
-          edges={edges as Edge[]}
+          edges={validEdges as Edge[]}
           nodeTypes={nodeTypes}
           edgeTypes={edgeTypes}
           onNodesChange={onNodesChange as Parameters<typeof ReactFlow>[0]['onNodesChange']}
@@ -350,13 +394,17 @@ export default function FlowCanvas({ flowData }: FlowCanvasProps) {
           isValidConnection={(c) => {
             if (c.source === c.target) return false;
             if (!c.sourceHandle?.startsWith('pl-out-') || !c.targetHandle?.startsWith('pl-in-')) return false;
-            // Handle format: pl-out-{factoryId}-{plId}-{itemClassName}
             const sourceItemClass = c.sourceHandle.split('-').slice(4).join('-');
             const targetItemClass = c.targetHandle.split('-').slice(4).join('-');
-            return sourceItemClass === targetItemClass;
+            if (sourceItemClass !== targetItemClass) return false;
+            // Prevent duplicate connections between the same handles
+            const alreadyConnected = validEdges.some(
+              e => e.sourceHandle === c.sourceHandle && e.targetHandle === c.targetHandle
+            );
+            return !alreadyConnected;
           }}
-          panOnDrag={!isDraggingFromPalette}
           nodesDraggable={!isDraggingFromPalette}
+          panOnDrag={!isDraggingFromPalette}
           snapToGrid
           snapGrid={[20, 20]}
           fitView
@@ -367,6 +415,8 @@ export default function FlowCanvas({ flowData }: FlowCanvasProps) {
           className="flow-canvas"
           nodeOrigin={[0.5, 0.5]}
           deleteKeyCode={null}
+          connectionLineStyle={{ stroke: '#f97316', strokeWidth: 2, strokeDasharray: '6 3' }}
+          connectionLineType={ConnectionLineType.Bezier}
         >
           <Background variant={BackgroundVariant.Dots} color="#262626" gap={24} size={1.5} />
           <Controls className="[&>button]:bg-neutral-900 [&>button]:border-neutral-700 [&>button]:text-neutral-300 [&>button:hover]:bg-neutral-800" />

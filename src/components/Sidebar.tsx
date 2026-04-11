@@ -2,6 +2,7 @@
 
 import { FC, useState } from "react";
 import { useSession } from "next-auth/react";
+import { usePathname } from "next/navigation";
 import { Button } from "./ui/button";
 import { Plus, Layers, Filter, FilterX } from "lucide-react";
 import {
@@ -20,6 +21,7 @@ import {
   verticalListSortingStrategy,
 } from '@dnd-kit/sortable';
 import FactoryNavigationCard from './FactoryNavigationCard';
+import { Tooltip, TooltipContent, TooltipTrigger } from './ui/tooltip';
 
 interface Factory {
   id: string;
@@ -64,7 +66,11 @@ export const Sidebar: FC<SidebarProps> = ({
   canvasFactoryIds
 }) => {
   const { data: session, status } = useSession();
+  const pathname = usePathname();
   const [showOnlyUnsatisfied, setShowOnlyUnsatisfied] = useState(false);
+
+  // Hide sidebar on the flow page (it has its own PalettePanel)
+  if (pathname === '/flow') return null;
   
   const sensors = useSensors(
     useSensor(PointerSensor),
@@ -77,10 +83,10 @@ export const Sidebar: FC<SidebarProps> = ({
     const { active, over } = event;
 
     if (over && active.id !== over.id) {
-      const oldIndex = factories.findIndex(f => f.id === active.id);
-      const newIndex = factories.findIndex(f => f.id === over.id);
+      const oldIndex = (factories ?? []).findIndex(f => f.id === active.id);
+      const newIndex = (factories ?? []).findIndex(f => f.id === over.id);
       
-      const reorderedFactories = arrayMove(factories, oldIndex, newIndex).map((factory, index) => ({
+      const reorderedFactories = arrayMove(factories ?? [], oldIndex, newIndex).map((factory, index) => ({
         ...factory,
         order: index
       }));
@@ -90,11 +96,11 @@ export const Sidebar: FC<SidebarProps> = ({
 
   // Filter factories based on satisfaction status if filter is active
   const filteredFactories = showOnlyUnsatisfied && factoryStatuses
-    ? factories.filter(factory => {
+    ? (factories ?? []).filter(factory => {
         const status = factoryStatuses.get(factory.id);
         return status && !status.isSatisfied;
       })
-    : factories;
+    : (factories ?? []);
 
   // Group factories by location
   const groupedFactories = () => {
@@ -143,30 +149,31 @@ export const Sidebar: FC<SidebarProps> = ({
       {/* Factories Navigation */}
       <div className="flex-1">
         {session ? (
-          <>            {factories.length > 0 && (
+          <>            {(factories ?? []).length > 0 && (
               <>
                 <div className="flex items-center gap-2 mb-3 px-1">
                   <Layers className="w-4 h-4 text-slate-400" />
                   <h3 className="text-sm font-medium text-slate-300">Factories</h3>
                   <span className="text-xs text-slate-500 bg-slate-800 px-2 py-1 rounded">
-                    {factories.length}
+                    {(factories ?? []).length}
                   </span>                  {factoryStatuses && factoryStatuses.size > 0 && (() => {
                     const satisfiedCount = Array.from(factoryStatuses.values()).filter(s => s.isSatisfied).length;
                     const totalTracked = factoryStatuses.size;
-                    const unsatisfiedCount = totalTracked - satisfiedCount;
                     return (
-                      <span 
-                        className={`text-xs px-2 py-1 rounded cursor-help ${
-                          satisfiedCount === totalTracked 
-                            ? 'text-green-400 bg-green-900/20' 
-                            : 'text-orange-400 bg-orange-900/20'
-                        }`}
-                        title={unsatisfiedCount > 0 
-                          ? `${unsatisfiedCount} factories need attention`
-                          : 'All factories satisfied'                        }
-                      >
-                        {satisfiedCount}/{totalTracked} ✓
-                      </span>
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <span
+                            className={`text-xs px-2 py-1 rounded cursor-help ${
+                              satisfiedCount === totalTracked
+                                ? 'text-green-400 bg-green-900/20'
+                                : 'text-orange-400 bg-orange-900/20'
+                            }`}
+                          >
+                            {satisfiedCount}/{totalTracked} ✓
+                          </span>
+                        </TooltipTrigger>
+                        <TooltipContent>{satisfiedCount} of {totalTracked} factories have all dependencies satisfied</TooltipContent>
+                      </Tooltip>
                     );
                   })()}
                 </div>
@@ -198,7 +205,7 @@ export const Sidebar: FC<SidebarProps> = ({
                     </Button>
                     {showOnlyUnsatisfied && (
                       <span className="text-xs text-slate-500">
-                        {filteredFactories.length} of {factories.length}
+                        {filteredFactories.length} of {(factories ?? []).length}
                       </span>
                     )}
                   </div>
@@ -268,7 +275,7 @@ export const Sidebar: FC<SidebarProps> = ({
                 </DndContext>
               </>
             )}            
-            {factories.length === 0 && (
+            {(factories ?? []).length === 0 && (
               <div className="text-center text-slate-500 text-sm mt-8">
                 <Layers className="w-8 h-8 mx-auto mb-2 opacity-50" />
                 <p>No factories yet</p>
@@ -276,7 +283,7 @@ export const Sidebar: FC<SidebarProps> = ({
               </div>
             )}
             
-            {factories.length > 0 && filteredFactories.length === 0 && showOnlyUnsatisfied && (
+            {(factories ?? []).length > 0 && filteredFactories.length === 0 && showOnlyUnsatisfied && (
               <div className="text-center text-slate-500 text-sm mt-8">
                 <Layers className="w-8 h-8 mx-auto mb-2 opacity-50" />
                 <p>All factories satisfied!</p>

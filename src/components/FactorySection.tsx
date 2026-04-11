@@ -18,6 +18,7 @@ import {
   Factory,
   AlertTriangle
 } from "lucide-react";
+import { Tooltip, TooltipContent, TooltipTrigger } from "./ui/tooltip";
 import { DeleteConfirmationDialog } from "./DeleteConfirmationDialog";
 import ItemRecipeSelector from "./ItemRecipeSelector";
 import EnhancedItemRecipeSelector from "./EnhancedItemRecipeSelector";
@@ -506,7 +507,7 @@ export const FactorySection: FC<FactorySectionProps> = ({
         : 'border-red-700 shadow-red-900/20'
     }`}>
       {/* Title Section with Action Buttons */}
-      <div className="flex items-center justify-between mb-6">
+      <div className="flex items-center justify-between mb-6 sticky top-0 z-10 bg-neutral-900 border-b border-slate-700 shadow-sm -mx-6 px-6 py-3 rounded-t-lg">
         <div className="flex items-center gap-3">
           <div className="flex items-center gap-2">
             <div className="text-white text-lg">🏭</div>
@@ -581,47 +582,73 @@ export const FactorySection: FC<FactorySectionProps> = ({
         </div>
           {/* Action Buttons */}
         <div className="flex gap-1">
-          <Button 
-            size="sm" 
-            variant="outline" 
-            className="border-blue-500 text-blue-400 hover:bg-blue-500 hover:text-white transition-colors"
-            aria-label="Move up"
-          >
-            <ArrowUp className="w-4 h-4" />
-          </Button>
-          <Button 
-            size="sm" 
-            variant="outline" 
-            className="border-neutral-600 text-neutral-400 hover:bg-neutral-600 hover:text-white transition-colors"
-            aria-label="Move down"
-          >
-            <ArrowDown className="w-4 h-4" />
-          </Button>
-          <Button 
-            size="sm" 
-            variant="outline" 
-            className="border-neutral-600 text-neutral-400 hover:bg-neutral-600 hover:text-white transition-colors"
-            aria-label="Lock/unlock"
-          >
-            <Lock className="w-4 h-4" />
-          </Button>
-          <Button 
-            size="sm" 
-            variant="outline" 
-            className="border-yellow-500 text-yellow-400 hover:bg-yellow-500 hover:text-white transition-colors"
-            aria-label="Save"
-          >
-            <Save className="w-4 h-4" />
-          </Button>          <Button 
-            size="sm" 
-            variant="outline" 
-            className="border-red-500 text-red-400 hover:bg-red-500 hover:text-white transition-colors"
-            aria-label="Delete"
-            onClick={() => setShowDeleteDialog(true)}
-            disabled={isDeleting}
-          >
-            <Trash2 className="w-4 h-4" />
-          </Button>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button
+                size="sm"
+                variant="outline"
+                className="border-blue-500 text-blue-400 hover:bg-blue-500 hover:text-white transition-colors"
+                aria-label="Move up"
+              >
+                <ArrowUp className="w-4 h-4" />
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent>Move up</TooltipContent>
+          </Tooltip>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button
+                size="sm"
+                variant="outline"
+                className="border-neutral-600 text-neutral-400 hover:bg-neutral-600 hover:text-white transition-colors"
+                aria-label="Move down"
+              >
+                <ArrowDown className="w-4 h-4" />
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent>Move down</TooltipContent>
+          </Tooltip>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button
+                size="sm"
+                variant="outline"
+                className="border-neutral-600 text-neutral-400 hover:bg-neutral-600 hover:text-white transition-colors"
+                aria-label="Lock"
+              >
+                <Lock className="w-4 h-4" />
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent>Lock</TooltipContent>
+          </Tooltip>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button
+                size="sm"
+                variant="outline"
+                className="border-yellow-500 text-yellow-400 hover:bg-yellow-500 hover:text-white transition-colors"
+                aria-label="Save changes"
+              >
+                <Save className="w-4 h-4" />
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent>Save changes</TooltipContent>
+          </Tooltip>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button
+                size="sm"
+                variant="outline"
+                className="border-red-500 text-red-400 hover:bg-red-500 hover:text-white transition-colors"
+                aria-label="Delete factory"
+                onClick={() => setShowDeleteDialog(true)}
+                disabled={isDeleting}
+              >
+                <Trash2 className="w-4 h-4" />
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent>Delete factory</TooltipContent>
+          </Tooltip>
         </div>
       </div>
 
@@ -788,7 +815,7 @@ export const FactorySection: FC<FactorySectionProps> = ({
                 setShowProductionSelector(false);
                 setFilterItemForProduction(undefined);
               }}
-              className="mt-2"
+              className="mt-2 bg-neutral-800 border-neutral-600 text-slate-200 hover:text-white hover:bg-neutral-700"
             >
               Cancel
             </Button>

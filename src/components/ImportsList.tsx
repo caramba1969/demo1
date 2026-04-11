@@ -3,6 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import { ExternalLink, X, Factory, Package, Pencil, Check } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { formatRate } from '@/lib/utils';
 
 interface FactoryImport {
   _id: string;
@@ -225,16 +226,16 @@ export default function ImportsList({ factoryId, onImportDeleted, refreshTrigger
                         <div className="text-xs space-y-0.5">
                           <div className="flex items-center gap-1">
                             <span className="text-slate-400">Produces:</span>
-                            <span className="text-green-400 font-medium">{capacity.produced.toFixed(1)}/min</span>
+                            <span className="text-green-400 font-medium">{formatRate(capacity.produced)}/min</span>
                           </div>
                           <div className="flex items-center gap-1">
                             <span className="text-slate-400">Allocated elsewhere:</span>
-                            <span className="text-yellow-400 font-medium">{capacity.allocatedElsewhere.toFixed(1)}/min</span>
+                            <span className="text-yellow-400 font-medium">{formatRate(capacity.allocatedElsewhere)}/min</span>
                           </div>
                           <div className="flex items-center gap-1">
                             <span className="text-slate-400">Available:</span>
                             <span className={`font-medium ${capacity.max <= 0 ? 'text-red-400' : 'text-blue-400'}`}>
-                              {capacity.max.toFixed(1)}/min
+                              {formatRate(capacity.max)}/min
                             </span>
                           </div>
                           {capacity.produced === 0 && (
@@ -248,7 +249,7 @@ export default function ImportsList({ factoryId, onImportDeleted, refreshTrigger
                     </div>
                   ) : (
                     <span className="text-xs text-slate-400">
-                      {importItem.requiredAmount.toFixed(1)}/min
+                      {formatRate(importItem.requiredAmount)}/min
                     </span>
                   )}
                 </div>

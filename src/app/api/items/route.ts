@@ -8,6 +8,7 @@ export async function GET(request: NextRequest) {
     
     const { searchParams } = new URL(request.url);
     const search = searchParams.get('search');
+    const nameOnly = searchParams.get('nameOnly');
     const page = parseInt(searchParams.get('page') || '1');
     const limit = parseInt(searchParams.get('limit') || '50');
     const liquid = searchParams.get('liquid');
@@ -17,11 +18,15 @@ export async function GET(request: NextRequest) {
     
     // Text search
     if (search) {
-      query.$or = [
-        { name: { $regex: search, $options: 'i' } },
-        { description: { $regex: search, $options: 'i' } },
-        { slug: { $regex: search, $options: 'i' } }
-      ];
+      if (nameOnly === 'true') {
+        query.name = { $regex: search, $options: 'i' };
+      } else {
+        query.$or = [
+          { name: { $regex: search, $options: 'i' } },
+          { description: { $regex: search, $options: 'i' } },
+          { slug: { $regex: search, $options: 'i' } }
+        ];
+      }
     }
     
     // Filter by liquid/solid

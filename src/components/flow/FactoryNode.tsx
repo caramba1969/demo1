@@ -1,11 +1,20 @@
 'use client';
 
-import { useState, useCallback } from 'react';
-import { Handle, Position, NodeResizer, type NodeProps, type Node } from '@xyflow/react';
+import { useState, useCallback, useEffect } from 'react';
+import { Handle, Position, NodeResizer, useUpdateNodeInternals, type NodeProps, type Node } from '@xyflow/react';
 import { useDroppable } from '@dnd-kit/core';
 import { Factory, Zap, Building2, Plus, Trash2, Loader2, ChevronDown, ChevronUp, EyeOff } from 'lucide-react';
-import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 import EnhancedItemRecipeSelector from '@/components/EnhancedItemRecipeSelector';
 import type { FlowFactoryData, ProductionLineData } from './flowTypes';
 
@@ -38,9 +47,19 @@ function formatRate(rate: number): string {
   return rate.toFixed(0);
 }
 
-export default function FactoryNode({ data, selected }: NodeProps<FactoryNodeType>) {
+export default function FactoryNode({ id, data, selected }: NodeProps<FactoryNodeType>) {
   const [expanded, setExpanded] = useState(true);
   const [showAddDialog, setShowAddDialog] = useState(false);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const updateNodeInternals = useUpdateNodeInternals();
+
+  // When collapsed changes, tell React Flow to re-measure the node dimensions
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      updateNodeInternals(id);
+    }, 0);
+    return () => clearTimeout(timer);
+  }, [expanded, id, updateNodeInternals]);
 
   const { setNodeRef, isOver } = useDroppable({
     id: `factory-drop-${data.factoryId}`,
@@ -77,7 +96,7 @@ export default function FactoryNode({ data, selected }: NodeProps<FactoryNodeTyp
       <div
         className={`bg-neutral-900 rounded-lg border-2 transition-colors ${
           selected ? 'border-orange-400' : 'border-neutral-700'
-        } shadow-lg w-full h-full flex flex-col overflow-x-clip`}
+        } shadow-lg w-full ${expanded ? 'h-full' : 'h-fit'} flex flex-col overflow-visible`}
       >
         <NodeResizer
           minWidth={320}
@@ -97,6 +116,8 @@ export default function FactoryNode({ data, selected }: NodeProps<FactoryNodeTyp
             <button
               onClick={() => setExpanded(e => !e)}
               className="text-neutral-400 hover:text-white transition-colors p-0.5"
+              title={expanded ? 'Collapse' : 'Expand'}
+              aria-label={expanded ? 'Collapse factory' : 'Expand factory'}
             >
               {expanded ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
             </button>
@@ -104,13 +125,15 @@ export default function FactoryNode({ data, selected }: NodeProps<FactoryNodeTyp
               onClick={() => data.onRemoveFromCanvas?.(data.factoryId)}
               className="text-neutral-500 hover:text-orange-400 transition-colors p-0.5"
               title="Remove from canvas"
+              aria-label="Remove factory from canvas"
             >
               <EyeOff className="w-3.5 h-3.5" />
             </button>
             <button
-              onClick={() => data.onDelete?.(data.factoryId)}
+              onClick={() => setShowDeleteConfirm(true)}
               className="text-neutral-500 hover:text-red-400 transition-colors p-0.5"
               title="Delete factory"
+              aria-label="Delete factory"
             >
               <Trash2 className="w-3.5 h-3.5" />
             </button>
@@ -157,17 +180,20 @@ export default function FactoryNode({ data, selected }: NodeProps<FactoryNodeTyp
             ) : data.productionLines.length === 0 ? (
               <p className="px-3 py-3 text-xs text-neutral-600 italic">No production lines yet</p>
             ) : (
-              <div className="divide-y divide-neutral-800 overflow-y-auto flex-1 min-h-0 scrollbar-none">
-                {data.productionLines.map(pl => (
-                  <ProductionLineRow
+              <div
+                className="overflow-y-auto flex-1 min-h-0 scrollbar-none -mx-4 px-4 pt-1 [&::-webkit-scrollbar]:hidden"
+                style={{ scrollbarWidth: 'none', msOverflowStyle: 'none', overflowX: 'visible' }}
+              >
+                <div className="divide-y divide-neutral-800">
+                  {data.productionLines.map(pl => (
+                    <ProductionLineRow
                     key={pl._id}
                     pl={pl}
                     factoryId={data.factoryId}
                     connectingItemClass={data.connectingItemClass}
                     connectingHandleType={data.connectingHandleType}
                   />
-                ))}
-              </div>
+                ))}                </div>              </div>
             )}
 
             {/* Drop zone */}
@@ -200,6 +226,29 @@ export default function FactoryNode({ data, selected }: NodeProps<FactoryNodeTyp
           />
         </DialogContent>
       </Dialog>
+
+      {/* Delete confirmation dialog */}
+      <AlertDialog open={showDeleteConfirm} onOpenChange={setShowDeleteConfirm}>
+        <AlertDialogContent className="bg-neutral-900 border-neutral-700">
+          <AlertDialogHeader>
+            <AlertDialogTitle className="text-white">Delete &ldquo;{data.name}&rdquo;?</AlertDialogTitle>
+            <AlertDialogDescription className="text-neutral-400">
+              This will permanently delete the factory and all its production lines. This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel className="bg-neutral-800 border-neutral-600 text-neutral-200 hover:bg-neutral-700 hover:text-white">
+              Cancel
+            </AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-red-600 text-white hover:bg-red-700"
+              onClick={() => data.onDelete?.(data.factoryId)}
+            >
+              Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </>
   );
 }
@@ -240,7 +289,7 @@ function ProductionLineRow({ pl, factoryId, connectingItemClass, connectingHandl
                     type="target"
                     position={Position.Left}
                     id={`pl-in-${factoryId}-${pl._id}-${ing.item}`}
-                    className={`!absolute !w-3 !h-3 !border-2 !border-neutral-900 !rounded-full !top-1/2 !-translate-y-1/2 !-left-2.5 !transition-all hover:!scale-125 ${isCompatible ? '!bg-blue-400 !scale-150 animate-pulse !border-blue-300' : '!bg-blue-500'}`}
+                    className={`!absolute !w-3.5 !h-3.5 !border-2 !border-neutral-900 !rounded-full !top-1/2 !-translate-y-1/2 !-left-2.5 !transition-all hover:!scale-150 hover:!shadow-[0_0_6px_rgba(59,130,246,0.6)] group-hover/handle:!scale-125 group-hover/handle:!shadow-[0_0_4px_rgba(59,130,246,0.4)] ${isCompatible ? '!bg-blue-400 !scale-150 animate-pulse !border-blue-300' : '!bg-blue-500'}`}
                   />
                   <span className="text-blue-300 truncate flex-1" title={ing.name}>{ing.name}</span>
                   <span className="text-blue-400/70 font-mono text-[10px] flex-shrink-0">{formatRate(rate)}/m</span>
@@ -269,7 +318,7 @@ function ProductionLineRow({ pl, factoryId, connectingItemClass, connectingHandl
                   type="source"
                   position={Position.Right}
                   id={`pl-out-${factoryId}-${pl._id}-${prod.item}`}
-                  className={`!absolute !w-3 !h-3 !border-2 !border-neutral-900 !rounded-full !top-1/2 !-translate-y-1/2 !-right-2.5 !transition-all hover:!scale-125 ${isCompatible ? '!bg-orange-300 !scale-150 animate-pulse !border-orange-200' : '!bg-orange-400'}`}
+                  className={`!absolute !w-3.5 !h-3.5 !border-2 !border-neutral-900 !rounded-full !top-1/2 !-translate-y-1/2 !-right-2.5 !transition-all hover:!scale-150 hover:!shadow-[0_0_6px_rgba(249,115,22,0.6)] group-hover/handle:!scale-125 group-hover/handle:!shadow-[0_0_4px_rgba(249,115,22,0.4)] ${isCompatible ? '!bg-orange-300 !scale-150 animate-pulse !border-orange-200' : '!bg-orange-400'}`}
                 />
               </div>
             );

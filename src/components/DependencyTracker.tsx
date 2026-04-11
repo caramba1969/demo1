@@ -4,6 +4,8 @@ import React, { useState, useEffect, useRef } from 'react';
 import { AlertTriangle, Plus, ArrowRight, Factory, Search, ExternalLink, RefreshCw, Clock, Play, Pause } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
+import { formatRate } from '@/lib/utils';
 
 interface Ingredient {
   item: string;
@@ -332,23 +334,33 @@ export default function DependencyTracker({
             <span className="font-medium">All dependencies satisfied</span>
           </div>
           <div className="flex items-center gap-2">
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => refreshDependencies()}
-              disabled={loading}
-              className="text-green-400 hover:text-green-300"
-            >
-              <RefreshCw className={`w-3 h-3 ${loading ? 'animate-spin' : ''}`} />
-            </Button>
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => setIsAutoRefreshEnabled(!isAutoRefreshEnabled)}
-              className={`${isAutoRefreshEnabled ? 'text-green-400' : 'text-gray-400'}`}
-            >
-              {isAutoRefreshEnabled ? <Play className="w-3 h-3" /> : <Pause className="w-3 h-3" />}
-            </Button>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => refreshDependencies()}
+                  disabled={loading}
+                  className="text-green-400 hover:text-green-300"
+                >
+                  <RefreshCw className={`w-3 h-3 ${loading ? 'animate-spin' : ''}`} />
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>Refresh now</TooltipContent>
+            </Tooltip>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => setIsAutoRefreshEnabled(!isAutoRefreshEnabled)}
+                  className={`${isAutoRefreshEnabled ? 'text-green-400' : 'text-gray-400'}`}
+                >
+                  {isAutoRefreshEnabled ? <Play className="w-3 h-3" /> : <Pause className="w-3 h-3" />}
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>{isAutoRefreshEnabled ? 'Pause auto-refresh' : 'Resume auto-refresh'}</TooltipContent>
+            </Tooltip>
           </div>
         </div>
         <div className="flex items-center justify-between mt-1">
@@ -357,11 +369,13 @@ export default function DependencyTracker({
           </p>          <div className="flex items-center gap-2 text-xs text-green-300">
             <Clock className="w-3 h-3" />
             <span>Last updated: {lastRefresh.toLocaleTimeString()}</span>
-            {isAutoRefreshEnabled && (
+            {isAutoRefreshEnabled ? (
               <span className="text-green-400">
                 • Auto-refresh: {imports.length > 0 ? '15s' : '30s'}
                 {imports.length > 0 && <span className="text-blue-300"> (monitoring imports)</span>}
               </span>
+            ) : (
+              <span className="text-gray-400">• Auto-refresh paused</span>
             )}
           </div>
         </div>
@@ -382,29 +396,39 @@ export default function DependencyTracker({
             </span>
           </div>
           <div className="flex items-center gap-2">
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={(e) => {
-                e.stopPropagation();
-                refreshDependencies();
-              }}
-              disabled={loading}
-              className="text-yellow-400 hover:text-yellow-300"
-            >
-              <RefreshCw className={`w-3 h-3 ${loading ? 'animate-spin' : ''}`} />
-            </Button>
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={(e) => {
-                e.stopPropagation();
-                setIsAutoRefreshEnabled(!isAutoRefreshEnabled);
-              }}
-              className={`${isAutoRefreshEnabled ? 'text-green-400' : 'text-gray-400'}`}
-            >
-              {isAutoRefreshEnabled ? <Play className="w-3 h-3" /> : <Pause className="w-3 h-3" />}
-            </Button>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    refreshDependencies();
+                  }}
+                  disabled={loading}
+                  className="text-yellow-400 hover:text-yellow-300"
+                >
+                  <RefreshCw className={`w-3 h-3 ${loading ? 'animate-spin' : ''}`} />
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>Refresh now</TooltipContent>
+            </Tooltip>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setIsAutoRefreshEnabled(!isAutoRefreshEnabled);
+                  }}
+                  className={`${isAutoRefreshEnabled ? 'text-green-400' : 'text-gray-400'}`}
+                >
+                  {isAutoRefreshEnabled ? <Play className="w-3 h-3" /> : <Pause className="w-3 h-3" />}
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>{isAutoRefreshEnabled ? 'Pause auto-refresh' : 'Resume auto-refresh'}</TooltipContent>
+            </Tooltip>
             <Button variant="ghost" size="sm" className="text-yellow-400">
               {expanded ? 'Hide' : 'Show'}
             </Button>
@@ -416,11 +440,13 @@ export default function DependencyTracker({
           </p>            <div className="flex items-center gap-2 text-xs text-yellow-300">
               <Clock className="w-3 h-3" />
               <span>Last updated: {lastRefresh.toLocaleTimeString()}</span>
-              {isAutoRefreshEnabled && (
+              {isAutoRefreshEnabled ? (
                 <span className="text-green-400">
                   • Auto-refresh: {imports.length > 0 ? '15s' : '30s'}
                   {imports.length > 0 && <span className="text-blue-300"> (monitoring imports)</span>}
                 </span>
+              ) : (
+                <span className="text-gray-400">• Auto-refresh paused</span>
               )}
             </div>
         </div>
@@ -434,27 +460,20 @@ export default function DependencyTracker({
                 <div>
                   <h4 className="font-medium text-white">{missing.name}</h4>
                   <p className="text-sm text-slate-400">
-                    Required: {missing.requiredAmount.toFixed(1)}/min
+                    Required: {formatRate(missing.requiredAmount)}/min
                   </p>
                 </div>
               </div>
 
               <div className="space-y-3">
                 {/* Option 1: Add production line */}
-                <div className="flex items-center justify-between p-3 bg-blue-900/30 border border-blue-700 rounded-lg">
-                  <div className="flex items-center gap-2">
-                    <Plus className="w-4 h-4 text-blue-400" />
-                    <span className="text-blue-200">Create production line</span>
-                  </div>
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    className="border-blue-600 text-blue-300 hover:bg-blue-700"
-                    onClick={() => onAddProductionLine?.(missing.item)}
-                  >
-                    Add Line
-                  </Button>
-                </div>
+                <button
+                  onClick={() => onAddProductionLine?.(missing.item)}
+                  className="flex items-center gap-2 w-full p-3 bg-blue-900/30 border border-blue-700 rounded-lg hover:bg-blue-900/50 transition-colors text-left"
+                >
+                  <Plus className="w-4 h-4 text-blue-400" />
+                  <span className="text-blue-200">Create production line</span>
+                </button>
 
                 {/* Option 2: Import from other factories */}
                 {missing.availableInFactories.length > 0 && (
@@ -478,15 +497,15 @@ export default function DependencyTracker({
                             <Factory className="w-4 h-4 text-green-400" />
                             <div>                              <span className="text-green-200">{factory.factoryName}</span>
                               <p className="text-xs text-green-300">
-                                Produces: {factory.productionRate.toFixed(1)}/min
+                                Produces: {formatRate(factory.productionRate)}/min
                                 {existingImport && (
                                   <span className="text-blue-300 ml-1">
-                                    (Importing {existingImport.requiredAmount.toFixed(1)}/min)
+                                    (Importing {formatRate(existingImport.requiredAmount)}/min)
                                   </span>
                                 )}
                                 {existingImport && factory.productionRate > existingImport.requiredAmount && (
                                   <span className="text-yellow-300 ml-1">
-                                    • {(factory.productionRate - existingImport.requiredAmount).toFixed(1)}/min available
+                                    • {formatRate(factory.productionRate - existingImport.requiredAmount)}/min available
                                   </span>
                                 )}
                               </p>
@@ -557,7 +576,7 @@ export default function DependencyTracker({
                                     }
                                   }}
                                   disabled={importing === `${missing.item}-${factory.factoryId}`}
-                                  title={`Increase to ${Math.min(factory.productionRate, existingImport.requiredAmount + missing.requiredAmount).toFixed(1)}/min`}
+                                  title={`Increase to ${formatRate(Math.min(factory.productionRate, existingImport.requiredAmount + missing.requiredAmount))}/min`}
                                 >
                                   <svg className="w-3 h-3 mr-1" fill="currentColor" viewBox="0 0 20 20">
                                     <path fillRule="evenodd" d="M10 3a1 1 0 011 1v5h5a1 1 0 110 2h-5v5a1 1 0 11-2 0v-5H4a1 1 0 110-2h5V4a1 1 0 011-1z" clipRule="evenodd" />

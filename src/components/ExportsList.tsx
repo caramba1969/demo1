@@ -3,6 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import { ArrowRight, Factory, Truck, Clock, RefreshCw } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { formatRate } from '@/lib/utils';
 
 interface Export {
   _id: string;
@@ -148,7 +149,7 @@ export default function ExportsList({ factoryId, refreshTrigger }: ExportsListPr
                 <div key={itemClassName} className="flex items-center justify-between">
                   <span className="text-neutral-300 text-sm">{itemData.itemName}</span>
                   <span className="text-blue-400 font-mono text-sm">
-                    {itemData.totalAmount.toFixed(1)}/min
+                    {formatRate(itemData.totalAmount)}/min
                   </span>
                 </div>
               ))}
@@ -161,7 +162,7 @@ export default function ExportsList({ factoryId, refreshTrigger }: ExportsListPr
         <div className="flex items-center justify-between text-sm">
           <span className="text-neutral-400">Total Export Rate:</span>
           <span className="text-blue-400 font-mono font-medium">
-            {totalExports.toFixed(1)} items/min
+            {formatRate(totalExports)} items/min
           </span>
         </div>
       </div>
