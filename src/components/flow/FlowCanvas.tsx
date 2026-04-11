@@ -1,12 +1,13 @@
 'use client';
 
-import { useCallback, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import {
   ReactFlow,
   Background,
   Controls,
   MiniMap,
   BackgroundVariant,
+  useUpdateNodeInternals,
   type NodeTypes,
   type EdgeTypes,
   type Node,
@@ -26,6 +27,7 @@ import {
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { Factory, Plus } from 'lucide-react';
 import EnhancedItemRecipeSelector from '@/components/EnhancedItemRecipeSelector';
 import PalettePanel from './PalettePanel';
 import PaletteItemCard from './PaletteItemCard';
@@ -40,6 +42,105 @@ type FlowEdgeType = Edge<FlowEdgeData>;
 
 const nodeTypes: NodeTypes = { factoryNode: FactoryNode };
 const edgeTypes: EdgeTypes = { animatedFlow: ConnectionEdge };
+
+/**
+ * Rendered inside <ReactFlow> so it has access to React Flow context.
+ * Calls updateNodeInternals whenever the set of node IDs changes, with a 50ms
+ * delay to let Handle components finish mounting and register with React Flow's
+ * internal handle registry before edges are routed.
+ */
+function EdgeInitSync({ nodeIds }: { nodeIds: string[] }) {
+  const updateNodeInternals = useUpdateNodeInternals();
+  const prevKey = useRef('');
+
+  useEffect(() => {
+    const key = nodeIds.join(',');
+    if (key === prevKey.current || nodeIds.length === 0) return;
+    prevKey.current = key;
+    const timer = setTimeout(() => updateNodeInternals(nodeIds), 50);
+    return () => clearTimeout(timer);
+  }, [nodeIds, updateNodeInternals]);
+
+  return null;
+}
+
+/**
+ * Panel on the right side of the canvas listing all factories.
+ * Factories already on the canvas are shown greyed out.
+ * Others can be dragged onto the canvas via HTML5 drag (application/factory-id).
+ */
+function FactoryListPanel({
+  allFactories,
+  canvasFactoryIds,
+  onCreateClick,
+}: {
+  allFactories: Array<{ _id: string; name: string }>;
+  canvasFactoryIds: Set<string>;
+  onCreateClick: () => void;
+}) {
+  const [collapsed, setCollapsed] = useState(false);
+
+  return (
+    <div className="absolute right-0 top-0 z-10 h-full flex flex-row-reverse pointer-events-none">
+      <div
+        className={`pointer-events-auto flex flex-col bg-neutral-950/95 border-l border-neutral-800 backdrop-blur-sm transition-all duration-200 ${
+          collapsed ? 'w-0 overflow-hidden' : 'w-52'
+        }`}
+      >
+        {!collapsed && (
+          <>
+            <div className="flex items-center justify-between px-3 py-2.5 border-b border-neutral-800 flex-shrink-0">
+              <span className="text-xs font-semibold text-neutral-300 uppercase tracking-wider">Factories</span>
+              <button
+                onClick={onCreateClick}
+                className="flex items-center gap-1 text-xs text-orange-400 hover:text-orange-300 transition-colors"
+                title="Create new factory"
+              >
+                <Plus className="w-3.5 h-3.5" /> New
+              </button>
+            </div>
+            <div className="flex-1 overflow-y-auto px-2 py-2 space-y-1">
+              {allFactories.length === 0 && (
+                <p className="text-xs text-neutral-600 italic text-center py-4">No factories yet</p>
+              )}
+              {allFactories.map(f => {
+                const onCanvas = canvasFactoryIds.has(f._id);
+                return (
+                  <div
+                    key={f._id}
+                    draggable={!onCanvas}
+                    onDragStart={e => {
+                      e.dataTransfer.setData('application/factory-id', f._id);
+                      e.dataTransfer.effectAllowed = 'copy';
+                    }}
+                    className={`flex items-center gap-2 px-2 py-1.5 rounded text-xs transition-colors ${
+                      onCanvas
+                        ? 'text-neutral-600 cursor-default'
+                        : 'text-neutral-300 cursor-grab hover:bg-neutral-800 hover:text-white active:cursor-grabbing'
+                    }`}
+                    title={onCanvas ? 'Already on canvas' : 'Drag to canvas'}
+                  >
+                    <Factory className={`w-3.5 h-3.5 flex-shrink-0 ${onCanvas ? 'text-neutral-700' : 'text-orange-400'}`} />
+                    <span className="truncate">{f.name}</span>
+                    {onCanvas && <span className="ml-auto text-[10px] text-neutral-700">on canvas</span>}
+                  </div>
+                );
+              })}
+            </div>
+          </>
+        )}
+      </div>
+      {/* Toggle tab */}
+      <button
+        onClick={() => setCollapsed(c => !c)}
+        className="pointer-events-auto self-start mt-3 -mr-px bg-neutral-950/95 border border-neutral-800 rounded-l px-1 py-2 text-neutral-500 hover:text-neutral-300 transition-colors"
+        title={collapsed ? 'Show factories' : 'Hide factories'}
+      >
+        <Factory className="w-3.5 h-3.5" />
+      </button>
+    </div>
+  );
+}
 
 /**
  * Custom DndKit sensor that ignores pointerdown events originating on
@@ -83,7 +184,7 @@ export default function FlowCanvas({ flowData }: FlowCanvasProps) {
   const {
     nodes, edges, onNodesChange, onEdgesChange,
     createFactory, refreshFactory, deleteFactory, addImportEdge,
-    addFactoryToCanvas, removeFactoryFromCanvas,
+    addFactoryToCanvas, removeFactoryFromCanvas, allFactories, canvasFactoryIds,
   } = flowData;
 
   const rfInstanceRef = useRef<{
@@ -135,6 +236,16 @@ export default function FlowCanvas({ flowData }: FlowCanvasProps) {
   const { isDraggingFromPalette, pendingDrop, handleDragStart, handleDragEnd, confirmDrop, cancelDrop } =
     useProductionLineDrop({ onAddProductionLine: handleAddProductionLine });
 
+  const handleDeleteProductionLine = useCallback(
+    async (factoryId: string, lineId: string) => {
+      const res = await fetch(`/api/factories/${factoryId}/production-lines/${lineId}`, {
+        method: 'DELETE',
+      });
+      if (res.ok) await refreshFactory(factoryId);
+    },
+    [refreshFactory]
+  );
+
   // Active drag item (for overlay)
   const [activeDragItem, setActiveDragItem] = useState<PaletteItem | null>(null);
 
@@ -159,6 +270,18 @@ export default function FlowCanvas({ flowData }: FlowCanvasProps) {
     },
     []
   );
+
+  // "New" button in factory list panel → open create popover at canvas center
+  const handleCreateFromSidebar = useCallback(() => {
+    if (!rfInstanceRef.current) return;
+    const canvasEl = document.querySelector('.react-flow__renderer') as HTMLElement | null;
+    const rect = canvasEl?.getBoundingClientRect();
+    const cx = rect ? rect.left + rect.width / 2 : window.innerWidth / 2;
+    const cy = rect ? rect.top + rect.height / 2 : window.innerHeight / 2;
+    const pos = rfInstanceRef.current.screenToFlowPosition({ x: cx, y: cy });
+    setNewFactoryPos(pos);
+    setNewFactoryName('New Factory');
+  }, []);
 
   const handleCreateFactory = useCallback(async () => {
     if (!newFactoryPos) return;
@@ -291,6 +414,7 @@ export default function FlowCanvas({ flowData }: FlowCanvasProps) {
       onDelete: deleteFactory,
       onRemoveFromCanvas: removeFactoryFromCanvas,
       onAddProductionLine: handleAddProductionLine,
+      onDeleteProductionLine: handleDeleteProductionLine,
       connectingItemClass,
       connectingHandleType,
     },
@@ -371,6 +495,11 @@ export default function FlowCanvas({ flowData }: FlowCanvasProps) {
         onDrop={handleDrop}
       >
         <PalettePanel />
+        <FactoryListPanel
+          allFactories={allFactories}
+          canvasFactoryIds={canvasFactoryIds}
+          onCreateClick={handleCreateFromSidebar}
+        />
 
         {/* Drop overlay hint */}
         {isDraggingOver && (
@@ -417,7 +546,9 @@ export default function FlowCanvas({ flowData }: FlowCanvasProps) {
           deleteKeyCode={null}
           connectionLineStyle={{ stroke: '#f97316', strokeWidth: 2, strokeDasharray: '6 3' }}
           connectionLineType={ConnectionLineType.Bezier}
+          doubleClickZoom={false}
         >
+          <EdgeInitSync nodeIds={enrichedNodes.map(n => n.id)} />
           <Background variant={BackgroundVariant.Dots} color="#262626" gap={24} size={1.5} />
           <Controls className="[&>button]:bg-neutral-900 [&>button]:border-neutral-700 [&>button]:text-neutral-300 [&>button:hover]:bg-neutral-800" />
           <MiniMap
@@ -500,6 +631,7 @@ export default function FlowCanvas({ flowData }: FlowCanvasProps) {
                 );
               }}
               filterByItemClass={pendingDrop.paletteItem.type === 'item' ? pendingDrop.paletteItem.itemClassName : undefined}
+              initialItemClass={pendingDrop.paletteItem.type === 'item' ? pendingDrop.paletteItem.itemClassName : undefined}
             />
           </DialogContent>
         </Dialog>

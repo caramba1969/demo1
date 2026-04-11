@@ -1,7 +1,7 @@
 'use client';
 
-import { useState, useCallback, useEffect } from 'react';
-import { Handle, Position, NodeResizer, useUpdateNodeInternals, type NodeProps, type Node } from '@xyflow/react';
+import { useState, useCallback, useEffect, useRef } from 'react';
+import { Handle, Position, NodeResizer, useUpdateNodeInternals, useReactFlow, type NodeProps, type Node } from '@xyflow/react';
 import { useDroppable } from '@dnd-kit/core';
 import { Factory, Zap, Building2, Plus, Trash2, Loader2, ChevronDown, ChevronUp, EyeOff } from 'lucide-react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
@@ -27,6 +27,7 @@ export interface FactoryNodeData extends FlowFactoryData {
     targetQuantityPerMinute: number;
     isExtraction: boolean;
   }) => void;
+  onDeleteProductionLine?: (factoryId: string, lineId: string) => void;
   connectingItemClass?: string | null;
   connectingHandleType?: 'source' | 'target' | null;
 }
@@ -52,19 +53,30 @@ export default function FactoryNode({ id, data, selected }: NodeProps<FactoryNod
   const [showAddDialog, setShowAddDialog] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const updateNodeInternals = useUpdateNodeInternals();
+  const { updateNode, getNode } = useReactFlow();
 
-  // When collapsed changes, tell React Flow to re-measure the node dimensions
+  // When collapsed, clear the stored pixel height so React Flow remeasures from CSS
+  // (manually resized nodes store an explicit height in style that prevents h-fit from working)
   useEffect(() => {
+    if (!expanded) {
+      const node = getNode(id);
+      const currentWidth = (node?.style?.width as number | undefined) ?? 360;
+      updateNode(id, { style: { width: currentWidth } });
+    }
     const timer = setTimeout(() => {
       updateNodeInternals(id);
     }, 0);
     return () => clearTimeout(timer);
-  }, [expanded, id, updateNodeInternals]);
+  }, [expanded, id, updateNodeInternals, updateNode, getNode]);
 
   const { setNodeRef, isOver } = useDroppable({
     id: `factory-drop-${data.factoryId}`,
     data: { factoryId: data.factoryId },
   });
+
+  // Keep a ref to the latest data so callbacks never close over stale data
+  const dataRef = useRef(data);
+  useEffect(() => { dataRef.current = data; }, [data]);
 
   const handleSelectionComplete = useCallback(
     (selectionData: {
@@ -74,7 +86,7 @@ export default function FactoryNode({ id, data, selected }: NodeProps<FactoryNod
       targetQuantityPerMinute: number;
       isExtraction: boolean;
     }) => {
-      data.onAddProductionLine?.(data.factoryId, {
+      dataRef.current.onAddProductionLine?.(dataRef.current.factoryId, {
         itemClassName: selectionData.item.className,
         recipeClassName: selectionData.isExtraction ? 'EXTRACTION' : (selectionData.recipe?.className ?? ''),
         targetQuantityPerMinute: selectionData.targetQuantityPerMinute,
@@ -82,7 +94,7 @@ export default function FactoryNode({ id, data, selected }: NodeProps<FactoryNod
       });
       setShowAddDialog(false);
     },
-    [data]
+    [] // stable — reads from ref at call time
   );
 
   const locationColor = data.locationId?.color ?? '#f97316';
@@ -192,6 +204,7 @@ export default function FactoryNode({ id, data, selected }: NodeProps<FactoryNod
                     factoryId={data.factoryId}
                     connectingItemClass={data.connectingItemClass}
                     connectingHandleType={data.connectingHandleType}
+                    onDelete={dataRef.current.onDeleteProductionLine}
                   />
                 ))}                </div>              </div>
             )}
@@ -254,16 +267,19 @@ export default function FactoryNode({ id, data, selected }: NodeProps<FactoryNod
 }
 
 /** Individual production line showing inputs (left) and outputs (right) */
-function ProductionLineRow({ pl, factoryId, connectingItemClass, connectingHandleType }: {
+function ProductionLineRow({ pl, factoryId, connectingItemClass, connectingHandleType, onDelete }: {
   pl: ProductionLineData;
   factoryId: string;
   connectingItemClass?: string | null;
   connectingHandleType?: 'source' | 'target' | null;
+  onDelete?: (factoryId: string, lineId: string) => void;
 }) {
   const buildings = pl.buildingCount ?? 1;
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
 
   return (
-    <div className={`relative py-2 text-xs ${pl.active ? '' : 'opacity-40'}`}>
+    <>
+    <div className={`relative py-2 text-xs group/plrow ${pl.active ? '' : 'opacity-40'}`}>
       {/* Recipe name header */}
       <div className="flex items-center gap-1.5 px-3 mb-1.5">
         <span
@@ -272,6 +288,13 @@ function ProductionLineRow({ pl, factoryId, connectingItemClass, connectingHandl
         />
         <span className="text-neutral-200 font-medium truncate flex-1">{pl.recipeName || pl.itemName}</span>
         <span className="text-neutral-500">{buildings}×</span>
+        <button
+          onClick={() => setShowDeleteConfirm(true)}
+          className="ml-1 opacity-0 group-hover/plrow:opacity-100 transition-opacity text-neutral-600 hover:text-red-400 p-0.5"
+          title="Delete production line"
+        >
+          <Trash2 className="w-3 h-3" />
+        </button>
       </div>
 
       {/* Inputs and outputs */}
@@ -326,5 +349,27 @@ function ProductionLineRow({ pl, factoryId, connectingItemClass, connectingHandl
         </div>
       </div>
     </div>
+    <AlertDialog open={showDeleteConfirm} onOpenChange={setShowDeleteConfirm}>
+      <AlertDialogContent className="bg-neutral-900 border-neutral-700">
+        <AlertDialogHeader>
+          <AlertDialogTitle className="text-white">Delete &ldquo;{pl.recipeName || pl.itemName}&rdquo;?</AlertDialogTitle>
+          <AlertDialogDescription className="text-neutral-400">
+            This will permanently remove this production line. This action cannot be undone.
+          </AlertDialogDescription>
+        </AlertDialogHeader>
+        <AlertDialogFooter>
+          <AlertDialogCancel className="bg-neutral-800 border-neutral-600 text-neutral-200 hover:bg-neutral-700 hover:text-white">
+            Cancel
+          </AlertDialogCancel>
+          <AlertDialogAction
+            className="bg-red-600 text-white hover:bg-red-700"
+            onClick={() => { onDelete?.(factoryId, pl._id); setShowDeleteConfirm(false); }}
+          >
+            Delete
+          </AlertDialogAction>
+        </AlertDialogFooter>
+      </AlertDialogContent>
+    </AlertDialog>
+    </>
   );
 }

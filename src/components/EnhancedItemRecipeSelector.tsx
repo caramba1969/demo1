@@ -52,6 +52,8 @@ interface EnhancedItemRecipeSelectorProps {
   }) => void;
   className?: string;
   filterByItemClass?: string;
+  /** Pre-select this item className and jump straight to recipe selection */
+  initialItemClass?: string;
 }
 
 // Common extracted resources in Satisfactory
@@ -176,7 +178,8 @@ const getItemImageUrl = (className: string) => {
 export default function EnhancedItemRecipeSelector({ 
   onSelectionComplete, 
   className = '', 
-  filterByItemClass 
+  filterByItemClass,
+  initialItemClass,
 }: EnhancedItemRecipeSelectorProps) {
   const [mode, setMode] = useState<'recipe' | 'extraction'>('recipe');
   const [step, setStep] = useState<'item' | 'recipe' | 'quantity'>('item');
@@ -189,12 +192,46 @@ export default function EnhancedItemRecipeSelector({
   const [targetQuantity, setTargetQuantity] = useState<number>(60);
   const [loading, setLoading] = useState(false);
 
-  // Load items on component mount
+  // If an initial item class is provided, fetch the item and skip to recipe selection
   useEffect(() => {
-    loadItems();
-  }, [searchTerm, filterByItemClass]);
+    if (!initialItemClass) return;
+    const init = async () => {
+      setLoading(true);
+      try {
+        const res = await fetch(`/api/items?className=${encodeURIComponent(initialItemClass)}&limit=1`);
+        if (!res.ok) return;
+        const data = await res.json();
+        const item: Item | undefined = (data.items || [])[0];
+        if (!item) return;
+        setSelectedItem(item);
+        if (EXTRACTION_DATA[item.className]) {
+          setSelectedExtraction(EXTRACTION_DATA[item.className]);
+          setMode('extraction');
+          setStep('quantity');
+        } else {
+          const recipesRes = await fetch(`/api/recipes?productItem=${encodeURIComponent(item.className)}&limit=50`);
+          if (recipesRes.ok) {
+            const rdata = await recipesRes.json();
+            setRecipes(rdata.recipes || []);
+          }
+          setStep('recipe');
+        }
+      } finally {
+        setLoading(false);
+      }
+    };
+    init();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [initialItemClass]);
+
+  // Load items when search changes (only in normal non-preselected mode)
+  useEffect(() => {
+    if (!initialItemClass) loadItems();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [searchTerm, filterByItemClass, initialItemClass]);
 
   const loadItems = async () => {
+    if (initialItemClass) return; // pre-selection handles this case
     setLoading(true);
     try {
       const params = new URLSearchParams();

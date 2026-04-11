@@ -71,44 +71,34 @@ export default function ConnectionEdge({
           opacity: selected ? 1 : 0.85,
         }}
       />
-      {data?.itemName && (
-        <EdgeLabelRenderer>
-          {selected ? (
-            <div
-              style={{
-                position: 'absolute',
-                transform: `translate(-50%, -50%) translate(${labelX}px, ${labelY}px)`,
-                pointerEvents: 'all',
-              }}
-              className="flex items-center gap-1"
-            >
-              <div className="bg-neutral-900/95 border border-orange-500/50 text-neutral-200 text-xs rounded px-2 py-0.5 whitespace-nowrap">
-                {data.itemName}
-                {amount > 0 && <span className="text-orange-400 ml-1">· {amount}/min</span>}
-              </div>
-              <button
-                onClick={handleDelete}
-                className="w-4 h-4 rounded-full bg-red-600 hover:bg-red-500 text-white flex items-center justify-center text-xs leading-none flex-shrink-0"
-                title="Delete connection"
-              >
-                ×
-              </button>
-            </div>
-          ) : (
-            <div
-              style={{
-                position: 'absolute',
-                transform: `translate(-50%, -50%) translate(${labelX}px, ${labelY}px)`,
-                pointerEvents: 'none',
-              }}
-              className="bg-neutral-900/90 border border-neutral-700 text-neutral-300 text-xs rounded px-2 py-0.5 whitespace-nowrap"
-            >
+      <EdgeLabelRenderer>
+        <div
+          style={{
+            position: 'absolute',
+            transform: `translate(-50%, -50%) translate(${labelX}px, ${labelY}px)`,
+            pointerEvents: 'all',
+          }}
+          className="group/edgelabel flex items-center gap-1"
+        >
+          {data?.itemName && (
+            <div className={`text-xs rounded px-2 py-0.5 whitespace-nowrap border ${
+              selected
+                ? 'bg-neutral-900/95 border-orange-500/50 text-neutral-200'
+                : 'bg-neutral-900/90 border-neutral-700 text-neutral-300'
+            }`}>
               {data.itemName}
               {amount > 0 && <span className="text-orange-400 ml-1">· {amount}/min</span>}
             </div>
           )}
-        </EdgeLabelRenderer>
-      )}
+          <button
+            onClick={handleDelete}
+            className="w-5 h-5 rounded-full bg-red-600 hover:bg-red-500 text-white flex items-center justify-center text-xs leading-none flex-shrink-0 opacity-0 group-hover/edgelabel:opacity-100 transition-opacity shadow-lg"
+            title="Delete connection"
+          >
+            ×
+          </button>
+        </div>
+      </EdgeLabelRenderer>
     </>
   );
 }

@@ -22,21 +22,20 @@ export default function FlowPage() {
 
   const flowData = useFlowData();
 
-  // Sync allFactories from flowData into sidebar format
+  // Sync allFactories from flowData into sidebar format; clear loading once initial fetch completes
   useEffect(() => {
-    if (flowData.allFactories.length > 0) {
-      setSidebarFactories(
-        flowData.allFactories.map((f: { _id: string; name: string; order?: number }) => ({
-          id: f._id,
-          name: f.name,
-          order: f.order ?? 0,
-          tasks: [],
-          notes: [],
-        }))
-      );
-      setIsLoading(false);
-    }
-  }, [flowData.allFactories]);
+    if (!flowData.isLoaded) return;
+    setSidebarFactories(
+      flowData.allFactories.map((f: { _id: string; name: string; order?: number }) => ({
+        id: f._id,
+        name: f.name,
+        order: f.order ?? 0,
+        tasks: [],
+        notes: [],
+      }))
+    );
+    setIsLoading(false);
+  }, [flowData.allFactories, flowData.isLoaded]);
 
   useEffect(() => {
     if (status === 'loading') return;

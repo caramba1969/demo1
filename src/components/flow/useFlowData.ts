@@ -85,6 +85,7 @@ export function useFlowData() {
   const [edges, setEdges, onEdgesChange] = useEdgesState<Edge<FlowEdgeData>>([]);
   const [allFactories, setAllFactories] = useState<RawFactory[]>([]);
   const [canvasFactoryIds, setCanvasFactoryIds] = useState<Set<string>>(new Set());
+  const [isLoaded, setIsLoaded] = useState(false);
   const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // Debounced position save
@@ -243,6 +244,7 @@ export function useFlowData() {
       })
     );
     setEdges(allEdges);
+    setIsLoaded(true);
   }, [setNodes, setEdges, loadProductionLines]);
 
   useEffect(() => {
@@ -407,6 +409,7 @@ export function useFlowData() {
     removeFactoryFromCanvas,
     allFactories,
     canvasFactoryIds,
+    isLoaded,
     reload: loadAll,
   };
 }
