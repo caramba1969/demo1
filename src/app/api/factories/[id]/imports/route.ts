@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
-import { authOptions } from '@/app/api/auth/[...nextauth]/route';
+import { authOptions } from '@/lib/auth';
 import { dbConnect } from '@/lib/mongodb';
 import mongoose from 'mongoose';
 
@@ -22,7 +22,7 @@ const FactoryImport = mongoose.models.FactoryImport || mongoose.model('FactoryIm
 // Create an import relationship between factories
 export async function POST(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const session = await getServerSession(authOptions);
@@ -31,7 +31,7 @@ export async function POST(
     }
 
     await dbConnect();
-    const factoryId = params.id;
+    const factoryId = (await params).id;
     const body = await request.json();
     const { sourceFactoryId, itemClassName, requiredAmount, sourceProductionLineId, targetProductionLineId } = body;    // Validate input
     if (!sourceFactoryId || !itemClassName || !requiredAmount) {
@@ -88,7 +88,7 @@ export async function POST(
 // Get all imports for a factory
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const session = await getServerSession(authOptions);
@@ -120,7 +120,7 @@ export async function GET(
 // Update an import
 export async function PATCH(
   request: NextRequest,
-  { params: _params }: { params: { id: string } }
+  { params: _params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const session = await getServerSession(authOptions);
@@ -169,7 +169,7 @@ export async function PATCH(
 // Delete an import
 export async function DELETE(
   request: NextRequest,
-  { params: _params }: { params: { id: string } }
+  { params: _params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const session = await getServerSession(authOptions);

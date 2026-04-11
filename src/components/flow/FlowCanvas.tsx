@@ -546,7 +546,7 @@ export default function FlowCanvas({ flowData }: FlowCanvasProps) {
           deleteKeyCode={null}
           connectionLineStyle={{ stroke: '#f97316', strokeWidth: 2, strokeDasharray: '6 3' }}
           connectionLineType={ConnectionLineType.Bezier}
-          doubleClickZoom={false}
+          zoomOnDoubleClick={false}
         >
           <EdgeInitSync nodeIds={enrichedNodes.map(n => n.id)} />
           <Background variant={BackgroundVariant.Dots} color="#262626" gap={24} size={1.5} />
