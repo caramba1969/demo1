@@ -10,9 +10,6 @@ import {
   Lock, 
   Trash2,
   Plus,
-  Zap,
-  ArrowRight,
-  HelpCircle,
   Check,
   X,
   Factory,
@@ -20,7 +17,6 @@ import {
 } from "lucide-react";
 import { Tooltip, TooltipContent, TooltipTrigger } from "./ui/tooltip";
 import { DeleteConfirmationDialog } from "./DeleteConfirmationDialog";
-import ItemRecipeSelector from "./ItemRecipeSelector";
 import EnhancedItemRecipeSelector from "./EnhancedItemRecipeSelector";
 import ProductionLineCard from "./ProductionLineCard";
 import DependencyTracker from "./DependencyTracker";
@@ -86,7 +82,7 @@ export const FactorySection: FC<FactorySectionProps> = ({
 }) => {const [name, setName] = useState(initialName);
   const [editing, setEditing] = useState(false);
   const [isUpdating, setIsUpdating] = useState(false);
-  const [showSatisfactionDetails, setShowSatisfactionDetails] = useState(false);
+  const [_showSatisfactionDetails, _setShowSatisfactionDetails] = useState(false);
   const [newTask, setNewTask] = useState("");
   const [newNote, setNewNote] = useState("");
   const [tasks, setTasks] = useState<Task[]>(initialTasks);
@@ -828,7 +824,7 @@ export const FactorySection: FC<FactorySectionProps> = ({
               // Set up the selector to show only recipes that produce this ingredient
               setFilterItemForProduction(ingredient);
               setShowProductionSelector(true);
-            }}onImportFromFactory={(ingredient: string, factoryId: string) => {
+            }}onImportFromFactory={(_ingredient: string, _factoryId: string) => {
               // Refresh dependency tracker and imports list after import is created
               loadProductionLines();
               setImportsRefreshTrigger(prev => prev + 1); // Trigger imports list refresh

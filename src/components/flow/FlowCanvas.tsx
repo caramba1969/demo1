@@ -31,7 +31,7 @@ import { Factory, Plus } from 'lucide-react';
 import EnhancedItemRecipeSelector from '@/components/EnhancedItemRecipeSelector';
 import PalettePanel from './PalettePanel';
 import PaletteItemCard from './PaletteItemCard';
-import FactoryNode, { type FactoryNodeType } from './FactoryNode';
+import FactoryNode from './FactoryNode';
 import ConnectionEdge from './ConnectionEdge';
 import ConnectionDialog from './ConnectionDialog';
 import type { useFlowData } from './useFlowData';

@@ -3,7 +3,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { AlertTriangle, Plus, ArrowRight, Factory, Search, ExternalLink, RefreshCw, Clock, Play, Pause } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { formatRate } from '@/lib/utils';
 
@@ -91,7 +90,7 @@ export default function DependencyTracker({
 
       if (!response.ok) {
         throw new Error('Failed to create import');
-      }      const data = await response.json();
+      }      await response.json();
       
       // Reload imports to update the analysis
       await loadImports();

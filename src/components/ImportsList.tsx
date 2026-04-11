@@ -317,7 +317,7 @@ export default function ImportsList({ factoryId, onImportDeleted, refreshTrigger
 
       <div className="mt-3 pt-3 border-t border-slate-700">
         <p className="text-xs text-slate-500">
-          These ingredients are imported from other factories and consumed by this factory's production lines.
+          These ingredients are imported from other factories and consumed by this factory&apos;s production lines.
         </p>
       </div>
     </div>

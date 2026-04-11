@@ -84,7 +84,7 @@ const RECIPE_NATIVE_CLASS = 'FGRecipe';
 
 function toSlug(className: string): string {
   // Strip common prefixes/suffixes then convert PascalCase to kebab-case
-  let name = className
+  const name = className
     .replace(/^Desc_/, '')
     .replace(/^Recipe_/, '')
     .replace(/_C$/, '');
@@ -267,7 +267,7 @@ export function convertRawSatisfactoryData(rawJson: string): ConvertedData {
  * and returns the converted { items, recipes } structure.
  */
 export function convertRawSatisfactoryFile(filePath: string): ConvertedData {
-  const fs = require('fs') as typeof import('fs');
+  const fs = require('fs') as typeof import('fs'); // eslint-disable-line @typescript-eslint/no-require-imports
   const raw = fs.readFileSync(filePath);
 
   // Detect encoding: UTF-16 LE starts with BOM FF FE

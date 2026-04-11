@@ -73,7 +73,7 @@ export default function AdminPage() {
           message: result.error || 'Conversion failed',
         });
       }
-    } catch (error) {
+    } catch {
       setConvertResult({ success: false, message: 'Network error during conversion' });
     } finally {
       setConverting(false);
@@ -104,7 +104,7 @@ export default function AdminPage() {
           message: result.error || 'Import failed',
         });
       }
-    } catch (error) {
+    } catch {
       setImportResult({
         success: false,
         message: 'Network error during import',
@@ -117,15 +117,15 @@ export default function AdminPage() {
     // Could redirect to main page or show message
   };
 
-  const handleSelectFactory = (id: string) => {
+  const handleSelectFactory = (_id: string) => {
     // Admin doesn't select factories
   };
 
-  const handleDeleteFactory = (id: string) => {
+  const handleDeleteFactory = (_id: string) => {
     // Admin doesn't delete factories
   };
 
-  const handleReorderFactories = (factories: any[]) => {
+  const handleReorderFactories = (_factories: any[]) => {
     // Admin doesn't reorder factories
   };
 
@@ -298,7 +298,7 @@ export default function AdminPage() {
                 <div className="bg-slate-800 rounded-lg p-6">
                   <h2 className="text-xl font-semibold text-white mb-4">Database Status</h2>
                   <p className="text-slate-300">
-                    After importing the data, you'll be able to:
+                    After importing the data, you&apos;ll be able to:
                   </p>
                   <ul className="list-disc list-inside text-slate-300 mt-2 space-y-1">
                     <li>Select items from the Satisfactory database</li>

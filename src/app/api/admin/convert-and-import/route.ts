@@ -43,7 +43,6 @@ export async function POST(request: NextRequest) {
     const { items, recipes } = convertRawSatisfactoryData(text);
 
     const itemCount = Object.keys(items).length;
-    const recipeCount = Object.keys(recipes).length;
 
     if (itemCount === 0) {
       return NextResponse.json(

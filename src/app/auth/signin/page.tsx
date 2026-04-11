@@ -4,13 +4,12 @@ import { getProviders, signIn, useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Github, Loader2 } from "lucide-react";
-import Image from "next/image";
 
 export default function SignInPage() {
   const [providers, setProviders] = useState<any>(null);
   const [isSignUp, setIsSignUp] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
-  const { data: session, status } = useSession();
+  const { status } = useSession();
   const router = useRouter();
 
   useEffect(() => {

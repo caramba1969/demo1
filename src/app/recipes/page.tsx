@@ -49,7 +49,7 @@ interface Factory {
 }
 
 export default function RecipesPage() {
-  const { data: session, status } = useSession();
+  const { status } = useSession();
   const [recipes, setRecipes] = useState<Recipe[]>([]);
   const [factories, setFactories] = useState<Factory[]>([]);
   const [filteredRecipes, setFilteredRecipes] = useState<Recipe[]>([]);

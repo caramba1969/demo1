@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { ArrowRight, Factory, Truck, Clock, RefreshCw } from 'lucide-react';
+import { ArrowRight, Factory, Truck, RefreshCw } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { formatRate } from '@/lib/utils';
 

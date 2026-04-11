@@ -17,7 +17,7 @@ export default function TestPage() {
       });
       const data = await response.json();
       setResult(data);
-    } catch (error) {
+    } catch {
       setResult({ error: 'Test failed' });
     }
     setLoading(false);
@@ -33,7 +33,7 @@ export default function TestPage() {
       });
       const data = await response.json();
       setResult({ type: 'real', ...data });
-    } catch (error) {
+    } catch {
       setResult({ error: 'Real factory creation failed' });
     }
     setLoading(false);

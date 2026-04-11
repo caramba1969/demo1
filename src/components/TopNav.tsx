@@ -1,10 +1,10 @@
 "use client";
 import { FC } from "react";
-import { useSession, signIn, signOut } from "next-auth/react";
+import { useSession, signOut } from "next-auth/react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { Button } from "./ui/button";
-import { Menu, LogIn, LayoutDashboard, BarChart2, BookOpen, HeartHandshake, User, Settings, MapPin, Workflow } from "lucide-react";
+import { Menu, LogIn, LayoutDashboard, BarChart2, BookOpen, Settings, MapPin, Workflow } from "lucide-react";
 
 export const TopNav: FC = () => {
   const pathname = usePathname();

@@ -8,7 +8,7 @@ import { Github, Loader2 } from "lucide-react";
 export default function SignUpPage() {
   const [providers, setProviders] = useState<any>(null);
   const [isLoading, setIsLoading] = useState(false);
-  const { data: session, status } = useSession();
+  const { status } = useSession();
   const router = useRouter();
 
   useEffect(() => {

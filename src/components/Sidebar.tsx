@@ -65,19 +65,20 @@ export const Sidebar: FC<SidebarProps> = ({
   factoryStatuses,
   canvasFactoryIds
 }) => {
-  const { data: session, status } = useSession();
+  const { data: session } = useSession();
   const pathname = usePathname();
   const [showOnlyUnsatisfied, setShowOnlyUnsatisfied] = useState(false);
 
-  // Hide sidebar on the flow page (it has its own PalettePanel)
-  if (pathname === '/flow') return null;
-  
+  // Hooks must be called before any conditional return (Rules of Hooks)
   const sensors = useSensors(
     useSensor(PointerSensor),
     useSensor(KeyboardSensor, {
       coordinateGetter: sortableKeyboardCoordinates,
     })
   );
+
+  // Hide sidebar on the flow page (it has its own PalettePanel)
+  if (pathname === '/flow') return null;
 
   const handleDragEnd = (event: DragEndEvent) => {
     const { active, over } = event;
@@ -279,7 +280,7 @@ export const Sidebar: FC<SidebarProps> = ({
               <div className="text-center text-slate-500 text-sm mt-8">
                 <Layers className="w-8 h-8 mx-auto mb-2 opacity-50" />
                 <p>No factories yet</p>
-                <p className="text-xs mt-1">Click "Add Factory" to get started</p>
+                <p className="text-xs mt-1">Click &quot;Add Factory&quot; to get started</p>
               </div>
             )}
             

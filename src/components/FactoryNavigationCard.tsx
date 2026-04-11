@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useCallback } from 'react';
-import { Factory, GripVertical, Settings, Trash2, AlertTriangle, CheckCircle, LayoutGrid } from 'lucide-react';
+import { Factory, GripVertical, Settings, Trash2, AlertTriangle, LayoutGrid } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useSortable } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';

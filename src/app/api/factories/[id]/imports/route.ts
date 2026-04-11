@@ -120,7 +120,7 @@ export async function GET(
 // Update an import
 export async function PATCH(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params: _params }: { params: { id: string } }
 ) {
   try {
     const session = await getServerSession(authOptions);
@@ -169,7 +169,7 @@ export async function PATCH(
 // Delete an import
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params: _params }: { params: { id: string } }
 ) {
   try {
     const session = await getServerSession(authOptions);

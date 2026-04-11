@@ -236,7 +236,7 @@ export default function Home() {
                       Welcome back, {session.user?.name?.split(' ')[0] || 'Engineer'}! 🏭
                     </h2>
                     <p className="text-sm text-neutral-400">
-                      Ready to optimize your Satisfactory factories? Let's build something amazing!
+                      Ready to optimize your Satisfactory factories? Let&apos;s build something amazing!
                     </p>
                   </div>
                 </div>

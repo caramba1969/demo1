@@ -15,10 +15,10 @@ interface Factory {
 }
 
 export default function FlowPage() {
-  const { data: session, status } = useSession();
-  const [sidebarFactories, setSidebarFactories] = useState<Factory[]>([]);
+  const { status } = useSession();
+  const [_sidebarFactories, setSidebarFactories] = useState<Factory[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const [error] = useState<string | null>(null);
 
   const flowData = useFlowData();
 
@@ -42,7 +42,7 @@ export default function FlowPage() {
     if (status === 'unauthenticated') { setIsLoading(false); return; }
   }, [status]);
 
-  const handleAddFactory = async () => {
+  const _handleAddFactory = async () => {
     if (status !== 'authenticated') return;
     const res = await fetch('/api/factories', {
       method: 'POST',
@@ -56,12 +56,12 @@ export default function FlowPage() {
     flowData.reload();
   };
 
-  const handleDeleteFactory = async (id: string) => {
+  const _handleDeleteFactory = async (id: string) => {
     await flowData.deleteFactory(id);
     setSidebarFactories(f => f.filter(x => x.id !== id));
   };
 
-  const handleReorderFactories = async (reordered: Factory[]) => {
+  const _handleReorderFactories = async (reordered: Factory[]) => {
     setSidebarFactories(reordered);
     await fetch('/api/factories/reorder', {
       method: 'PUT',

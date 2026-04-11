@@ -78,7 +78,7 @@ export async function GET(request: NextRequest) {
     const userFactories = await Factory.find({ userId: session.user?.id }).select('_id');
     const userFactoryIds = userFactories.map(f => f._id);
     
-    let query: any = {
+    const query: any = {
       factoryId: { $in: userFactoryIds }
     };
     
