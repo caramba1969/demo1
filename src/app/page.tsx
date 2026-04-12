@@ -6,6 +6,8 @@ import { FactorySection } from "../components/FactorySection";
 import { DismissibleNotification } from "@/components/ui/dismissible-notification";
 import AddFactoryDialog from "@/components/AddFactoryDialog";
 import EditFactoryDialog from "@/components/EditFactoryDialog";
+import { LandingPage } from "@/components/LandingPage";
+import { Loader2 } from "lucide-react";
 
 interface Factory {
   id: string; 
@@ -204,6 +206,20 @@ export default function Home() {
   const handleFactoryStatusChange = useCallback((id: string, status: FactoryStatus) => {
     setFactoryStatuses(prev => new Map(prev.set(id, status)));
   }, []);
+
+  // Show landing page for unauthenticated users
+  if (status === "unauthenticated") {
+    return <LandingPage />;
+  }
+
+  // Show spinner while session is loading
+  if (status === "loading") {
+    return (
+      <div className="flex items-center justify-center min-h-screen bg-slate-950">
+        <Loader2 className="w-8 h-8 animate-spin text-orange-500" />
+      </div>
+    );
+  }
 
   return (
     <>      <Sidebar 

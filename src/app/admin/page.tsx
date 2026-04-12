@@ -4,6 +4,7 @@ import { useState, useRef, useCallback } from 'react';
 import { Button } from '@/components/ui/button';
 import { Upload, CheckCircle, AlertCircle, Loader2, FileJson } from 'lucide-react';
 import { Sidebar } from '@/components/Sidebar';
+import { UserManagement } from '@/components/UserManagement';
 
 export default function AdminPage() {
   const [importing, setImporting] = useState(false);
@@ -296,7 +297,7 @@ export default function AdminPage() {
                 </div>
 
                 <div className="bg-slate-800 rounded-lg p-6">
-                  <h2 className="text-xl font-semibold text-white mb-4">Database Status</h2>
+                   <h2 className="text-xl font-semibold text-white mb-4">Database Status</h2>
                   <p className="text-slate-300">
                     After importing the data, you&apos;ll be able to:
                   </p>
@@ -307,6 +308,8 @@ export default function AdminPage() {
                     <li>Plan complex factory layouts with dependencies</li>
                   </ul>
                 </div>
+
+                <UserManagement />
               </div>
             </div>
           </div>

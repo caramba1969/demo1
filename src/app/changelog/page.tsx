@@ -5,6 +5,24 @@ import { Sidebar } from "@/components/Sidebar";
 
 const changelogEntries = [
   {
+    version: "v1.1",
+    date: "2026-04-12",
+    highlights: [
+      "🔐 Role-based Access Control — Admin and User roles with full enforcement",
+      "🛡️ Security-trimmed navigation — Admin menu link only visible to admins; all nav hidden for unauthenticated users",
+      "👥 User Management UI — Admins can view all users and change roles from the Admin page",
+      "🔒 API protection — All /api/admin/* endpoints return 403 for non-admins",
+      "⚙️ Server-side admin guard — /admin page redirects non-admins at the layout level",
+      "🚀 Bootstrap admin — Set ADMIN_EMAIL in .env.local to auto-promote on first sign-in",
+      "⚡ Performance fix — Role is cached in JWT, no extra DB call on every request",
+      "✨ Landing page — Unauthenticated visitors see a feature intro page with sign-in CTA instead of the app",
+      "🔒 Route protection — All app UI routes (/graph, /flow, /locations, /recipes, /admin, /migrate) redirect unauthenticated users to sign-in via middleware",
+      "🛠️ Developer agent — Added @developer custom agent that implements plans from @architect-review / @infra-engineer and always updates the changelog",
+      "🐛 Fix: Change Log page now publicly visible to all users (unauthenticated and authenticated)",
+      "🔒 Security: Change Log restricted to admins only — hidden from nav, protected by middleware and server layout guard"
+    ]
+  },
+  {
     version: "v1.0",
     date: "2025-06-22",
     highlights: [
