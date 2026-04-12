@@ -5,6 +5,18 @@ import { Sidebar } from "@/components/Sidebar";
 
 const changelogEntries = [
   {
+    version: "v1.6",
+    date: "2026-04-12",
+    highlights: [
+      "♻️ Refactor: Extracted FactoryImport into shared model at src/lib/models/FactoryImport.ts — eliminates inline schema duplication in imports/exports routes",
+      "🔒 Security: User deletion now cascade-deletes all user data — factories, production lines, locations, imports/exports and OTP records are all removed atomically",
+      "✨ Admin: User stats column — factory 🏭, production line ⚙️ and location 📍 counts shown per user in the management table",
+      "✨ Admin: Delete confirmation now shows exact data impact (e.g. 'Will permanently delete: 3 factories, 12 production lines, 1 location') before executing",
+      "✨ Admin: Delete success toast shows full breakdown of what was removed",
+      "⚡ Performance: User stats loaded in parallel per user via Promise.all; opt-in via ?stats=true query param to avoid overhead for large lists",
+    ]
+  },
+  {
     version: "v1.5",
     date: "2026-04-12",
     highlights: [

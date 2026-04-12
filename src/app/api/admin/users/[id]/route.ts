@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { requireAuth } from "@/lib/auth-utils";
+import { deleteUserData } from "@/lib/delete-user-data";
 import { dbConnect } from "@/lib/mongodb";
 import { User } from "@/lib/models/User";
 
@@ -45,7 +46,7 @@ export async function PATCH(
   return NextResponse.json(user);
 }
 
-// DELETE /api/admin/users/[id] — delete a user account
+// DELETE /api/admin/users/[id] — cascade-delete a user and all their data
 export async function DELETE(
   _req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
@@ -63,13 +64,12 @@ export async function DELETE(
     );
   }
 
-  await dbConnect();
-
-  const user = await User.findByIdAndDelete(id);
-
-  if (!user) {
-    return NextResponse.json({ error: "User not found." }, { status: 404 });
+  try {
+    const result = await deleteUserData(id);
+    return NextResponse.json({ success: true, ...result });
+  } catch (err) {
+    const message = err instanceof Error ? err.message : "Delete failed";
+    const status = message === "User not found" ? 404 : 500;
+    return NextResponse.json({ error: message }, { status });
   }
-
-  return NextResponse.json({ success: true, deleted: user.email });
 }

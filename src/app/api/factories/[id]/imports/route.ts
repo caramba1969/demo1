@@ -2,22 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
 import { dbConnect } from '@/lib/mongodb';
-import mongoose from 'mongoose';
-
-// Define the FactoryImport schema and model
-const FactoryImportSchema = new mongoose.Schema({
-  targetFactoryId: { type: mongoose.Schema.Types.ObjectId, required: true, ref: 'Factory' },
-  sourceFactoryId: { type: mongoose.Schema.Types.ObjectId, required: true, ref: 'Factory' },
-  itemClassName: { type: String, required: true },
-  requiredAmount: { type: Number, required: true },
-  userId: { type: String, required: true, index: true },
-  createdAt: { type: Date, default: Date.now },
-  active: { type: Boolean, default: true },
-  sourceProductionLineId: { type: String, required: false, default: null },
-  targetProductionLineId: { type: String, required: false, default: null },
-});
-
-const FactoryImport = mongoose.models.FactoryImport || mongoose.model('FactoryImport', FactoryImportSchema);
+import { FactoryImport } from '@/lib/models/FactoryImport';
 
 // Create an import relationship between factories
 export async function POST(
