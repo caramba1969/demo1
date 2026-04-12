@@ -1,9 +1,11 @@
 import type { NextAuthOptions } from "next-auth";
 import GoogleProvider from "next-auth/providers/google";
 import GitHubProvider from "next-auth/providers/github";
+import CredentialsProvider from "next-auth/providers/credentials";
 import { MongoDBAdapter } from "@auth/mongodb-adapter";
 import clientPromise, { dbConnect } from "@/lib/mongodb";
 import { User } from "@/lib/models/User";
+import { Otp } from "@/lib/models/Otp";
 
 export const authOptions: NextAuthOptions = {
   adapter: MongoDBAdapter(clientPromise),
@@ -18,6 +20,42 @@ export const authOptions: NextAuthOptions = {
         clientSecret: process.env.GITHUB_CLIENT_SECRET,
       })
     ] : []),
+    CredentialsProvider({
+      id: "credentials",
+      name: "Email",
+      credentials: {
+        email: { label: "Email", type: "email" },
+        verifiedToken: { label: "Verified Token", type: "text" },
+      },
+      async authorize(credentials) {
+        if (!credentials?.email || !credentials?.verifiedToken) return null;
+
+        await dbConnect();
+
+        // Validate the short-lived verified token issued after OTP check
+        const otp = await Otp.findOne({
+          email: credentials.email.toLowerCase(),
+          code: credentials.verifiedToken,
+          type: "reset-password", // ephemeral credential token stored under this type
+          expiresAt: { $gt: new Date() },
+        });
+
+        if (!otp) return null;
+
+        // Single-use — consume immediately
+        await Otp.deleteOne({ _id: otp._id });
+
+        const user = await User.findOne({ email: credentials.email.toLowerCase() });
+        if (!user) return null;
+
+        return {
+          id: user._id.toString(),
+          email: user.email,
+          name: user.name,
+          image: user.image,
+        };
+      },
+    }),
   ],
   session: {
     strategy: 'jwt' as const,
@@ -27,7 +65,7 @@ export const authOptions: NextAuthOptions = {
     error: "/auth/signin",
   },
   callbacks: {
-    async signIn({ user }) {
+    async signIn({ user, account }) {
       // Bootstrap: promote to admin if email matches ADMIN_EMAIL env var
       if (user.email && process.env.ADMIN_EMAIL) {
         const adminEmails = process.env.ADMIN_EMAIL.split(',').map(e => e.trim().toLowerCase());
@@ -44,6 +82,14 @@ export const authOptions: NextAuthOptions = {
           }
         }
       }
+
+      // Block credentials users who haven't verified their email
+      if (account?.provider === 'credentials') {
+        await dbConnect();
+        const dbUser = await User.findOne({ email: user.email });
+        if (!dbUser?.emailVerified) return false;
+      }
+
       return true;
     },
     async jwt({ token, user }) {

@@ -44,3 +44,5 @@ jobs:
           NEXTAUTH_SECRET: ci-secret-placeholder
           GOOGLE_CLIENT_ID: placeholder
           GOOGLE_CLIENT_SECRET: placeholder
+          RESEND_API_KEY: re_placeholder
+          RESEND_FROM_EMAIL: noreply@example.com

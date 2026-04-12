@@ -1,6 +1,7 @@
 'use client';
 
 import { signIn } from 'next-auth/react';
+import { useRouter } from 'next/navigation';
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import {
@@ -48,12 +49,13 @@ const features = [
     icon: ShieldCheck,
     title: 'Private & Secure',
     description:
-      'Your data is yours. Sign in with Google or GitHub — every factory is private to your account.',
+      'Your data is yours. Sign in with email+password or Google — every factory is private to your account.',
   },
 ];
 
 export function LandingPage() {
   const [loading, setLoading] = useState(false);
+  const router = useRouter();
 
   const handleSignIn = async () => {
     setLoading(true);
@@ -83,9 +85,17 @@ export function LandingPage() {
 
         <div className="flex flex-col sm:flex-row gap-4 items-center">
           <Button
-            onClick={handleSignIn}
+            onClick={() => router.push('/auth/signup')}
             disabled={loading}
             className="bg-orange-500 hover:bg-orange-600 text-white font-semibold px-8 py-3 text-base rounded-xl shadow-lg shadow-orange-500/20 transition-all"
+          >
+            Create free account
+          </Button>
+          <Button
+            onClick={handleSignIn}
+            disabled={loading}
+            variant="outline"
+            className="border-slate-600 text-slate-300 hover:bg-slate-800 hover:text-white font-semibold px-8 py-3 text-base rounded-xl transition-all"
           >
             {loading ? (
               <>
@@ -93,13 +103,13 @@ export function LandingPage() {
                 Redirecting…
               </>
             ) : (
-              'Get started — it\'s free'
+              'Sign in'
             )}
           </Button>
-          <span className="text-slate-500 text-sm">
-            Sign in with Google or GitHub. No password needed.
-          </span>
         </div>
+        <span className="text-slate-500 text-sm mt-2">
+          Email + password, or continue with Google
+        </span>
       </section>
 
       {/* Features */}
@@ -130,11 +140,11 @@ export function LandingPage() {
           Create your free account and start building in seconds.
         </p>
         <Button
-          onClick={handleSignIn}
+          onClick={() => router.push('/auth/signup')}
           disabled={loading}
           className="bg-orange-500 hover:bg-orange-600 text-white font-semibold px-10 py-3 text-base rounded-xl"
         >
-          {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Sign in to get started'}
+          {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Create free account'}
         </Button>
       </section>
     </div>

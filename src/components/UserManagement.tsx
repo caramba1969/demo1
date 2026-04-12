@@ -1,7 +1,8 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { Shield, User as UserIcon, Loader2, AlertCircle, CheckCircle } from 'lucide-react';
+import { Shield, User as UserIcon, Loader2, AlertCircle, CheckCircle, Trash2 } from 'lucide-react';
+import { useSession } from 'next-auth/react';
 
 interface UserRecord {
   _id: string;
@@ -12,10 +13,12 @@ interface UserRecord {
 }
 
 export function UserManagement() {
+  const { data: session } = useSession();
   const [users, setUsers] = useState<UserRecord[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [updating, setUpdating] = useState<string | null>(null);
+  const [confirmDelete, setConfirmDelete] = useState<string | null>(null);
   const [toast, setToast] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
 
   useEffect(() => {
@@ -29,6 +32,11 @@ export function UserManagement() {
       .finally(() => setLoading(false));
   }, []);
 
+  const showToast = (type: 'success' | 'error', message: string) => {
+    setToast({ type, message });
+    setTimeout(() => setToast(null), 4000);
+  };
+
   const handleRoleChange = async (userId: string, newRole: 'admin' | 'user') => {
     setUpdating(userId);
     setToast(null);
@@ -40,13 +48,32 @@ export function UserManagement() {
       });
       const data = await res.json();
       if (!res.ok) {
-        setToast({ type: 'error', message: data.error ?? 'Update failed' });
+        showToast('error', data.error ?? 'Update failed');
       } else {
         setUsers(prev => prev.map(u => u._id === userId ? { ...u, role: data.role } : u));
-        setToast({ type: 'success', message: `Role updated to "${newRole}" for ${data.name ?? data.email}.` });
+        showToast('success', `Role updated to "${newRole}" for ${data.name ?? data.email}.`);
       }
     } catch {
-      setToast({ type: 'error', message: 'Network error during update' });
+      showToast('error', 'Network error during update');
+    } finally {
+      setUpdating(null);
+    }
+  };
+
+  const handleDelete = async (userId: string) => {
+    setUpdating(userId);
+    setConfirmDelete(null);
+    try {
+      const res = await fetch(`/api/admin/users/${userId}`, { method: 'DELETE' });
+      const data = await res.json();
+      if (!res.ok) {
+        showToast('error', data.error ?? 'Delete failed');
+      } else {
+        setUsers(prev => prev.filter(u => u._id !== userId));
+        showToast('success', `User "${data.deleted}" deleted.`);
+      }
+    } catch {
+      showToast('error', 'Network error during delete');
     } finally {
       setUpdating(null);
     }
@@ -57,6 +84,7 @@ export function UserManagement() {
       <div className="flex items-center gap-3 mb-6">
         <Shield className="w-6 h-6 text-orange-400" />
         <h2 className="text-xl font-semibold text-white">User Management</h2>
+        <span className="ml-auto text-xs text-slate-400">{users.length} user{users.length !== 1 ? 's' : ''}</span>
       </div>
 
       {toast && (
@@ -89,44 +117,85 @@ export function UserManagement() {
               <tr className="border-b border-slate-700 text-slate-400 text-left">
                 <th className="pb-3 pr-4 font-medium">User</th>
                 <th className="pb-3 pr-4 font-medium">Email</th>
-                <th className="pb-3 font-medium">Role</th>
+                <th className="pb-3 pr-4 font-medium">Role</th>
+                <th className="pb-3 font-medium">Actions</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-700/50">
-              {users.map(user => (
-                <tr key={user._id} className="py-2">
-                  <td className="py-3 pr-4">
-                    <div className="flex items-center gap-2">
-                      {user.image ? (
-                        // eslint-disable-next-line @next/next/no-img-element
-                        <img src={user.image} alt="" className="w-7 h-7 rounded-full" />
-                      ) : (
-                        <div className="w-7 h-7 rounded-full bg-slate-600 flex items-center justify-center">
-                          <UserIcon className="w-4 h-4 text-slate-400" />
+              {users.map(user => {
+                const isSelf = session?.user?.id === user._id;
+                const isDeleting = updating === user._id;
+                const isPendingConfirm = confirmDelete === user._id;
+
+                return (
+                  <tr key={user._id} className="py-2">
+                    <td className="py-3 pr-4">
+                      <div className="flex items-center gap-2">
+                        {user.image ? (
+                          // eslint-disable-next-line @next/next/no-img-element
+                          <img src={user.image} alt="" className="w-7 h-7 rounded-full" />
+                        ) : (
+                          <div className="w-7 h-7 rounded-full bg-slate-600 flex items-center justify-center">
+                            <UserIcon className="w-4 h-4 text-slate-400" />
+                          </div>
+                        )}
+                        <span className="text-white">
+                          {user.name ?? '—'}
+                          {isSelf && <span className="ml-1 text-xs text-orange-400">(you)</span>}
+                        </span>
+                      </div>
+                    </td>
+                    <td className="py-3 pr-4 text-slate-300">{user.email}</td>
+                    <td className="py-3 pr-4">
+                      <div className="flex items-center gap-2">
+                        <select
+                          value={user.role}
+                          onChange={e => handleRoleChange(user._id, e.target.value as 'admin' | 'user')}
+                          disabled={isDeleting}
+                          className="bg-slate-700 border border-slate-600 text-white rounded px-2 py-1 text-sm focus:outline-none focus:ring-1 focus:ring-orange-500 disabled:opacity-50"
+                        >
+                          <option value="user">user</option>
+                          <option value="admin">admin</option>
+                        </select>
+                        {isDeleting && (
+                          <Loader2 className="w-4 h-4 text-orange-400 animate-spin" />
+                        )}
+                      </div>
+                    </td>
+                    <td className="py-3">
+                      {isSelf ? (
+                        <span className="text-xs text-slate-600 italic">—</span>
+                      ) : isPendingConfirm ? (
+                        <div className="flex items-center gap-2">
+                          <span className="text-xs text-red-400">Are you sure?</span>
+                          <button
+                            onClick={() => handleDelete(user._id)}
+                            className="text-xs bg-red-600 hover:bg-red-700 text-white px-2 py-1 rounded transition-colors"
+                          >
+                            Yes, delete
+                          </button>
+                          <button
+                            onClick={() => setConfirmDelete(null)}
+                            className="text-xs bg-slate-600 hover:bg-slate-500 text-white px-2 py-1 rounded transition-colors"
+                          >
+                            Cancel
+                          </button>
                         </div>
+                      ) : (
+                        <button
+                          onClick={() => setConfirmDelete(user._id)}
+                          disabled={isDeleting}
+                          title="Delete user"
+                          className="flex items-center gap-1 text-xs text-slate-400 hover:text-red-400 hover:bg-red-500/10 px-2 py-1 rounded transition-colors disabled:opacity-50"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                          Delete
+                        </button>
                       )}
-                      <span className="text-white">{user.name ?? '—'}</span>
-                    </div>
-                  </td>
-                  <td className="py-3 pr-4 text-slate-300">{user.email}</td>
-                  <td className="py-3">
-                    <div className="flex items-center gap-2">
-                      <select
-                        value={user.role}
-                        onChange={e => handleRoleChange(user._id, e.target.value as 'admin' | 'user')}
-                        disabled={updating === user._id}
-                        className="bg-slate-700 border border-slate-600 text-white rounded px-2 py-1 text-sm focus:outline-none focus:ring-1 focus:ring-orange-500 disabled:opacity-50"
-                      >
-                        <option value="user">user</option>
-                        <option value="admin">admin</option>
-                      </select>
-                      {updating === user._id && (
-                        <Loader2 className="w-4 h-4 text-orange-400 animate-spin" />
-                      )}
-                    </div>
-                  </td>
-                </tr>
-              ))}
+                    </td>
+                  </tr>
+                );
+              })}
             </tbody>
           </table>
           {users.length === 0 && (

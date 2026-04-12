@@ -1,54 +1,79 @@
 "use client";
-import { useEffect, useState } from "react";
+import { Suspense, useEffect, useState } from "react";
 import { getProviders, signIn, useSession } from "next-auth/react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { Button } from "@/components/ui/button";
-import { Github, Loader2 } from "lucide-react";
+import { Github, Loader2, Mail, Lock, AlertCircle, CheckCircle } from "lucide-react";
 
-export default function SignInPage() {
-  const [providers, setProviders] = useState<any>(null);
-  const [isSignUp, setIsSignUp] = useState(false);
+function SignInContent() {
+  const [providers, setProviders] = useState<Record<string, { id: string; name: string }> | null>(null);
   const [isLoading, setIsLoading] = useState(false);
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [error, setError] = useState("");
   const { status } = useSession();
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const justVerified = searchParams.get("verified") === "1";
+  const verifyError = searchParams.get("error");
 
   useEffect(() => {
-    getProviders().then((providers) => setProviders(providers));
+    getProviders().then((p) => {
+      if (p) {
+        // Exclude credentials from the OAuth buttons list
+        const oauthOnly = Object.fromEntries(
+          Object.entries(p).filter(([, v]) => v.type !== "credentials")
+        ) as Record<string, { id: string; name: string }>;
+        setProviders(oauthOnly);
+      }
+    });
   }, []);
 
-  // Redirect if already logged in
   useEffect(() => {
-    if (status === "authenticated") {
-      router.push("/");
-    }
+    if (status === "authenticated") router.push("/");
   }, [status, router]);
 
-  const handleSignIn = async (providerId: string) => {
+  const handleOAuth = async (providerId: string) => {
     setIsLoading(true);
+    await signIn(providerId, { callbackUrl: "/", redirect: true });
+  };
+
+  const handleCredentials = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setError("");
+    setIsLoading(true);
+
     try {
-      await signIn(providerId, { 
-        callbackUrl: "/",
-        redirect: true 
+      const res = await fetch("/api/auth/send-otp", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email, password }),
       });
-    } catch (error) {
-      console.error("Sign in error:", error);
+      const data = await res.json();
+      if (!res.ok) {
+        setError(data.error ?? "Sign-in failed.");
+        setIsLoading(false);
+        return;
+      }
+      // Redirect to OTP verification with email encoded in query
+      router.push(`/auth/verify-otp?email=${encodeURIComponent(email)}`);
+    } catch {
+      setError("Network error. Please try again.");
       setIsLoading(false);
     }
   };
 
-  // Show loading if checking session or already authenticated
   if (status === "loading" || status === "authenticated") {
     return (
       <main className="flex flex-col items-center justify-center min-h-screen bg-gradient-to-br from-neutral-950 via-neutral-900 to-neutral-950 px-4">
         <div className="flex flex-col items-center gap-4">
           <Loader2 className="w-8 h-8 animate-spin text-orange-500" />
-          <p className="text-neutral-400">
-            {status === "authenticated" ? "Redirecting to planner..." : "Loading..."}
-          </p>
+          <p className="text-neutral-400">{status === "authenticated" ? "Redirecting…" : "Loading…"}</p>
         </div>
       </main>
     );
   }
+
   const providerIcon = (name: string) => {
     switch (name.toLowerCase()) {
       case "google":
@@ -69,68 +94,106 @@ export default function SignInPage() {
 
   return (
     <main className="flex flex-col items-center justify-center min-h-screen bg-gradient-to-br from-neutral-950 via-neutral-900 to-neutral-950 px-4">
-      <div className="bg-neutral-900/90 p-8 rounded-2xl shadow-2xl w-full max-w-md border border-neutral-800 backdrop-blur-sm">        <div className="flex flex-col items-center mb-8">
+      <div className="bg-neutral-900/90 p-8 rounded-2xl shadow-2xl w-full max-w-md border border-neutral-800 backdrop-blur-sm">
+        <div className="flex flex-col items-center mb-8">
           <div className="w-16 h-16 bg-orange-500 rounded-full flex items-center justify-center mb-4">
             <svg className="w-8 h-8 text-white" fill="currentColor" viewBox="0 0 24 24">
               <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/>
             </svg>
           </div>
-          <h1 className="text-3xl font-bold mb-2 text-center tracking-tight">
-            {isSignUp ? "Create Account" : "Welcome Back"}
-          </h1>
+          <h1 className="text-3xl font-bold mb-2 text-center tracking-tight">Welcome Back</h1>
           <p className="text-neutral-400 text-center text-sm max-w-xs">
-            {isSignUp 
-              ? "Join thousands of engineers optimizing their Satisfactory factories"
-              : "Sign in to access your Satisfactory factory planning dashboard"
-            }
+            Sign in to access your Satisfactory factory planning dashboard
           </p>
-        </div>        <div className="flex flex-col gap-3">
-          {providers &&
-            Object.values(providers).map((provider: any) => (
-              <Button
-                key={provider.name}
-                onClick={() => handleSignIn(provider.id)}
-                disabled={isLoading}
-                className="w-full flex items-center justify-center gap-3 py-3 font-medium disabled:opacity-50 bg-white hover:bg-gray-50 text-gray-900 border-2 border-gray-200 hover:border-gray-300 transition-all duration-200"
-                variant="outline"
-              >
-                {isLoading ? (
-                  <Loader2 className="mr-2 w-5 h-5 animate-spin text-gray-600" />
-                ) : (
-                  providerIcon(provider.name)
-                )}
-                <span className="font-semibold text-gray-900">
-                  {isLoading 
-                    ? "Signing in..." 
-                    : `${isSignUp ? "Sign up" : "Continue"} with ${provider.name}`
-                  }
-                </span>
-              </Button>
-            ))}
         </div>
 
-        <div className="flex items-center my-6">
-          <div className="flex-1 h-px bg-neutral-700"></div>
+        {justVerified && (
+          <div className="flex items-center gap-2 mb-4 p-3 rounded-lg bg-green-500/10 border border-green-500/20 text-green-400 text-sm">
+            <CheckCircle className="w-4 h-4 shrink-0" />
+            Email verified! You can now sign in.
+          </div>
+        )}
+        {verifyError && (
+          <div className="flex items-center gap-2 mb-4 p-3 rounded-lg bg-red-500/10 border border-red-500/20 text-red-400 text-sm">
+            <AlertCircle className="w-4 h-4 shrink-0" />
+            Verification link is invalid or expired.
+          </div>
+        )}
+
+        {/* Email + password form */}
+        <form onSubmit={handleCredentials} className="flex flex-col gap-3 mb-4">
+          <div className="relative">
+            <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-neutral-500" />
+            <input
+              type="email"
+              placeholder="Email address"
+              value={email}
+              onChange={e => setEmail(e.target.value)}
+              required
+              className="w-full pl-9 pr-4 py-2.5 bg-neutral-800 border border-neutral-700 rounded-lg text-white placeholder-neutral-500 focus:outline-none focus:ring-2 focus:ring-orange-500 text-sm"
+            />
+          </div>
+          <div className="relative">
+            <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-neutral-500" />
+            <input
+              type="password"
+              placeholder="Password"
+              value={password}
+              onChange={e => setPassword(e.target.value)}
+              required
+              className="w-full pl-9 pr-4 py-2.5 bg-neutral-800 border border-neutral-700 rounded-lg text-white placeholder-neutral-500 focus:outline-none focus:ring-2 focus:ring-orange-500 text-sm"
+            />
+          </div>
+          {error && (
+            <div className="flex items-center gap-2 text-red-400 text-sm">
+              <AlertCircle className="w-4 h-4 shrink-0" /> {error}
+            </div>
+          )}
+          <Button
+            type="submit"
+            disabled={isLoading}
+            className="w-full bg-orange-600 hover:bg-orange-700 text-white font-semibold py-2.5 disabled:opacity-50"
+          >
+            {isLoading ? <Loader2 className="w-4 h-4 animate-spin mx-auto" /> : "Continue with Email"}
+          </Button>
+        </form>
+
+        <div className="flex items-center my-4">
+          <div className="flex-1 h-px bg-neutral-700" />
           <span className="px-3 text-xs text-neutral-500">or</span>
-          <div className="flex-1 h-px bg-neutral-700"></div>
+          <div className="flex-1 h-px bg-neutral-700" />
         </div>
 
-        <div className="text-center">
-          <p className="text-sm text-neutral-400 mb-4">
-            {isSignUp ? "Already have an account?" : "Don't have an account?"}
-          </p>
+        {/* OAuth buttons */}
+        <div className="flex flex-col gap-3">
+          {providers && Object.values(providers).map((provider) => (
+            <Button
+              key={provider.name}
+              onClick={() => handleOAuth(provider.id)}
+              disabled={isLoading}
+              className="w-full flex items-center justify-center gap-3 py-3 font-medium disabled:opacity-50 bg-white hover:bg-gray-50 text-gray-900 border-2 border-gray-200 hover:border-gray-300 transition-all duration-200"
+              variant="outline"
+            >
+              {providerIcon(provider.name)}
+              <span className="font-semibold text-gray-900">Continue with {provider.name}</span>
+            </Button>
+          ))}
+        </div>
+
+        <div className="text-center mt-6">
+          <p className="text-sm text-neutral-400 mb-3">Don&apos;t have an account?</p>
           <Button
             variant="ghost"
-            onClick={() => setIsSignUp(!isSignUp)}
+            onClick={() => router.push("/auth/signup")}
             className="text-orange-400 hover:text-orange-300 hover:bg-orange-500/10"
           >
-            {isSignUp ? "Sign in instead" : "Create a new account"}
+            Create a new account
           </Button>
         </div>
-        
-        <div className="mt-6 text-center">
+
+        <div className="mt-4 text-center">
           <p className="text-xs text-neutral-500">
-            By {isSignUp ? "creating an account" : "signing in"}, you agree to our{" "}
+            By signing in, you agree to our{" "}
             <a href="#" className="underline hover:text-primary">Terms of Service</a>{" "}
             and{" "}
             <a href="#" className="underline hover:text-primary">Privacy Policy</a>
@@ -138,5 +201,17 @@ export default function SignInPage() {
         </div>
       </div>
     </main>
+  );
+}
+
+export default function SignInPage() {
+  return (
+    <Suspense fallback={
+      <main className="flex items-center justify-center min-h-screen bg-gradient-to-br from-neutral-950 via-neutral-900 to-neutral-950">
+        <Loader2 className="w-8 h-8 animate-spin text-orange-500" />
+      </main>
+    }>
+      <SignInContent />
+    </Suspense>
   );
 }

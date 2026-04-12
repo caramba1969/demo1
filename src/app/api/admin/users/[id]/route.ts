@@ -44,3 +44,32 @@ export async function PATCH(
 
   return NextResponse.json(user);
 }
+
+// DELETE /api/admin/users/[id] — delete a user account
+export async function DELETE(
+  _req: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  const { session, error } = await requireAuth("admin");
+  if (error) return error;
+
+  const { id } = await params;
+
+  // Prevent admin from deleting themselves
+  if (session.user.id === id) {
+    return NextResponse.json(
+      { error: "You cannot delete your own account." },
+      { status: 400 }
+    );
+  }
+
+  await dbConnect();
+
+  const user = await User.findByIdAndDelete(id);
+
+  if (!user) {
+    return NextResponse.json({ error: "User not found." }, { status: 404 });
+  }
+
+  return NextResponse.json({ success: true, deleted: user.email });
+}

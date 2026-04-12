@@ -5,6 +5,48 @@ import { Sidebar } from "@/components/Sidebar";
 
 const changelogEntries = [
   {
+    version: "v1.5",
+    date: "2026-04-12",
+    highlights: [
+      "✨ Admin: User deletion — admins can now delete user accounts from the User Management panel",
+      "🔒 Security: Admins cannot delete their own account; server-side guard enforced on DELETE endpoint",
+      "✨ Admin: Inline delete confirmation — click Delete then confirm before the action is executed",
+      "✨ Admin: User count badge in header; toast notifications auto-dismiss after 4 seconds",
+      "✨ Admin: Current admin account highlighted with '(you)' label and deletion disabled for self",
+    ]
+  },
+  {
+    version: "v1.4",
+    date: "2026-04-12",
+    highlights: [
+      "✨ Landing page: Added dedicated 'Create free account' button — users can now reach sign-up directly without going through sign-in",
+      "🐛 Fix: Landing page CTA text updated from 'Google or GitHub only' to reflect email+password option",
+      "🐛 Fix: Added Suspense boundary around useSearchParams() in sign-in and verify-OTP pages (required by Next.js 15)",
+    ]
+  },
+  {
+    version: "v1.3",
+    date: "2026-04-12",
+    highlights: [
+      "🐛 Fix: Resend error responses were silently swallowed — both sendOtpEmail and sendVerifyEmail now throw on Resend errors so failures surface properly",
+    ]
+  },
+  {
+    version: "v1.2",
+    date: "2026-05-31",
+    highlights: [
+      "📧 Email + Password authentication — Users can now register and sign in with email and password (no Google required)",
+      "🔐 OTP MFA — Every email+password sign-in requires a one-time 6-digit code sent to the user's email",
+      "✉️ Email verification — Registration sends a verification link; unverified accounts cannot sign in",
+      "🛡️ Anti-enumeration protection — sign-in always runs bcrypt compare to prevent timing-based email discovery",
+      "⚡ Short-lived credential tokens — OTP verification issues a 2-minute token; raw passwords never reach NextAuth",
+      "🔑 CredentialsProvider — Added alongside Google OAuth; both strategies supported simultaneously",
+      "🔁 Auto-advance OTP input — 6-box digit input with paste support on the verify screen",
+      "🗑️ MongoDB TTL cleanup — OTP documents auto-expire (5 min login OTP, 2 min credential token, 24 h verify-email)",
+      "🔧 CI: Added RESEND_API_KEY and RESEND_FROM_EMAIL dummy env vars so CI builds pass without real keys"
+    ]
+  },
+  {
     version: "v1.1",
     date: "2026-04-12",
     highlights: [
