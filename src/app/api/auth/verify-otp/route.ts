@@ -30,7 +30,7 @@ export async function POST(req: NextRequest) {
   await Otp.create({
     email: email.toLowerCase(),
     code: verifiedToken,
-    type: "reset-password", // reusing the collection; treated as an ephemeral credential token
+    type: "credential-token",
     expiresAt: new Date(Date.now() + 2 * 60 * 1000),
   });
 

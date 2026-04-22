@@ -12,7 +12,7 @@ export const TopNav: FC = () => {
   const isLoggedIn = !!session;
 
   return (
-    <nav className="w-full flex items-center justify-between px-4 py-2 bg-neutral-900 border-b border-neutral-800 shadow-sm z-50">
+    <nav className="w-full flex items-center justify-between px-4 h-12 bg-neutral-900 border-b border-neutral-800 shadow-sm z-50">
       {/* Brand */}
       <div className="flex items-center gap-3">
         {isLoggedIn && <Menu className="w-6 h-6 text-neutral-400" aria-label="Open sidebar" />}
@@ -118,7 +118,7 @@ export const TopNav: FC = () => {
             <Button
               variant="ghost"
               size="sm"
-              className="text-neutral-300 hover:text-white hover:bg-red-500/10 hover:border-red-500/30 border border-transparent transition-all duration-200 font-medium px-4 py-2"
+              className="text-neutral-300 hover:text-white hover:bg-red-500/10 hover:border-red-500/30 border border-transparent transition-all duration-200 font-medium px-4 h-12"
               aria-label="Sign Out"
               onClick={() => signOut()}
             >

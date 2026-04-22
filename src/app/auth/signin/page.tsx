@@ -144,6 +144,15 @@ function SignInContent() {
               className="w-full pl-9 pr-4 py-2.5 bg-neutral-800 border border-neutral-700 rounded-lg text-white placeholder-neutral-500 focus:outline-none focus:ring-2 focus:ring-orange-500 text-sm"
             />
           </div>
+          <div className="text-right -mt-1">
+            <button
+              type="button"
+              onClick={() => router.push("/auth/forgot-password")}
+              className="text-xs text-neutral-400 hover:text-orange-400 transition-colors"
+            >
+              Forgot password?
+            </button>
+          </div>
           {error && (
             <div className="flex items-center gap-2 text-red-400 text-sm">
               <AlertCircle className="w-4 h-4 shrink-0" /> {error}

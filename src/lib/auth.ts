@@ -36,7 +36,7 @@ export const authOptions: NextAuthOptions = {
         const otp = await Otp.findOne({
           email: credentials.email.toLowerCase(),
           code: credentials.verifiedToken,
-          type: "reset-password", // ephemeral credential token stored under this type
+          type: "credential-token",
           expiresAt: { $gt: new Date() },
         });
 

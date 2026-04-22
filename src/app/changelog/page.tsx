@@ -5,6 +5,18 @@ import { Sidebar } from "@/components/Sidebar";
 
 const changelogEntries = [
   {
+    version: "v1.7",
+    date: "2026-04-20",
+    highlights: [
+      "✨ Feature: Forgot password — users can request a password reset link from the sign-in page",
+      "✨ Feature: Reset password page — secure token-based form to set a new password via emailed link",
+      "� Fix: Resolved double scrollbar issue by strictly enforcing TopNav height to mathematically align with sidebar and main content areas (`h-12` instead of dynamic padding)",
+      "�🔒 Security: Fixed OtpType collision — ephemeral credential tokens now use type 'credential-token', freeing 'reset-password' for its correct purpose",
+      "🔒 Security: Reset tokens use 32-byte crypto-random hex, expire in 1 hour, and are single-use",
+      "🔒 Security: Forgot-password endpoint never reveals whether an email is registered (anti-enumeration)",
+    ]
+  },
+  {
     version: "v1.6",
     date: "2026-04-12",
     highlights: [

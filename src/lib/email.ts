@@ -39,3 +39,22 @@ export async function sendVerifyEmail(email: string, token: string) {
   });
   if (error) throw new Error(`Resend error: ${error.message}`);
 }
+
+export async function sendPasswordResetEmail(email: string, token: string) {
+  const url = `${process.env.NEXTAUTH_URL}/auth/reset-password?token=${token}`;
+  const { error } = await resend.emails.send({
+    from: FROM,
+    to: email,
+    subject: "Reset your password — Satisfactory Planner",
+    html: `
+      <div style="font-family:sans-serif;max-width:400px;margin:0 auto">
+        <h2 style="color:#f97316">Satisfactory Factory Planner</h2>
+        <p>We received a request to reset your password. Click the button below to choose a new one:</p>
+        <a href="${url}" style="display:inline-block;background:#f97316;color:white;padding:12px 24px;border-radius:8px;text-decoration:none;font-weight:bold;margin:16px 0">Reset Password</a>
+        <p style="color:#6b7280">This link expires in <strong>1 hour</strong>.</p>
+        <p style="color:#6b7280;font-size:0.85rem">If you didn't request a password reset, you can safely ignore this email. Your password will not change.</p>
+      </div>
+    `,
+  });
+  if (error) throw new Error(`Resend error: ${error.message}`);
+}
