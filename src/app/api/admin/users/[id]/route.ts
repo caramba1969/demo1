@@ -1,0 +1,75 @@
+import { NextRequest, NextResponse } from "next/server";
+import { requireAuth } from "@/lib/auth-utils";
+import { deleteUserData } from "@/lib/delete-user-data";
+import { dbConnect } from "@/lib/mongodb";
+import { User } from "@/lib/models/User";
+
+// PATCH /api/admin/users/[id] — update a user's role
+export async function PATCH(
+  req: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  const { session, error } = await requireAuth("admin");
+  if (error) return error;
+
+  const { id } = await params;
+  const body = await req.json();
+  const { role } = body as { role?: string };
+
+  if (!role || !["admin", "user"].includes(role)) {
+    return NextResponse.json(
+      { error: 'Invalid role. Must be "admin" or "user".' },
+      { status: 400 }
+    );
+  }
+
+  // Prevent admin from downgrading themselves
+  if (session.user.id === id && role !== "admin") {
+    return NextResponse.json(
+      { error: "You cannot remove your own admin role." },
+      { status: 400 }
+    );
+  }
+
+  await dbConnect();
+
+  const user = await User.findByIdAndUpdate(
+    id,
+    { role, updatedAt: new Date() },
+    { new: true, runValidators: true }
+  ).select("name email image role");
+
+  if (!user) {
+    return NextResponse.json({ error: "User not found." }, { status: 404 });
+  }
+
+  return NextResponse.json(user);
+}
+
+// DELETE /api/admin/users/[id] — cascade-delete a user and all their data
+export async function DELETE(
+  _req: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  const { session, error } = await requireAuth("admin");
+  if (error) return error;
+
+  const { id } = await params;
+
+  // Prevent admin from deleting themselves
+  if (session.user.id === id) {
+    return NextResponse.json(
+      { error: "You cannot delete your own account." },
+      { status: 400 }
+    );
+  }
+
+  try {
+    const result = await deleteUserData(id);
+    return NextResponse.json({ success: true, ...result });
+  } catch (err) {
+    const message = err instanceof Error ? err.message : "Delete failed";
+    const status = message === "User not found" ? 404 : 500;
+    return NextResponse.json({ error: message }, { status });
+  }
+}

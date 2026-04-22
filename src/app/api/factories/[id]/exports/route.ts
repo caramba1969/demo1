@@ -1,26 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
-import { authOptions } from '@/app/api/auth/[...nextauth]/route';
+import { authOptions } from '@/lib/auth';
 import { dbConnect } from '@/lib/mongodb';
-import mongoose from 'mongoose';
-
-// Use the same FactoryImport model since exports are just imports from another perspective
-const FactoryImportSchema = new mongoose.Schema({
-  targetFactoryId: { type: mongoose.Schema.Types.ObjectId, required: true, ref: 'Factory' },
-  sourceFactoryId: { type: mongoose.Schema.Types.ObjectId, required: true, ref: 'Factory' },
-  itemClassName: { type: String, required: true },
-  requiredAmount: { type: Number, required: true },
-  userId: { type: String, required: true, index: true },
-  createdAt: { type: Date, default: Date.now },
-  active: { type: Boolean, default: true }
-});
-
-const FactoryImport = mongoose.models.FactoryImport || mongoose.model('FactoryImport', FactoryImportSchema);
+import { FactoryImport } from '@/lib/models/FactoryImport';
 
 // Get all exports from this factory (imports where this factory is the source)
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const session = await getServerSession(authOptions);

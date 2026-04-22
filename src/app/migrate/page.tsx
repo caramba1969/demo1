@@ -17,7 +17,7 @@ export default function MigratePage() {
       });
       const data = await response.json();
       setResult(data);
-    } catch (error) {
+    } catch {
       setResult({ error: 'Failed to migrate' });
     }
     setLoading(false);

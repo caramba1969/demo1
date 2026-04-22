@@ -38,7 +38,7 @@ export default function LocationSelector({
   const [locations, setLocations] = useState<Location[]>([]);
   const [loading, setLoading] = useState(true);
   const [showAddForm, setShowAddForm] = useState(false);
-  const [editingLocation, setEditingLocation] = useState<string | null>(null);
+  const [_editingLocation, setEditingLocation] = useState<string | null>(null);
   const [newLocation, setNewLocation] = useState({
     name: '',
     description: '',

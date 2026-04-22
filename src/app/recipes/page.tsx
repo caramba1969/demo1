@@ -14,6 +14,8 @@ import {
   ArrowRight,
   Building2,
   ChevronDown,
+  ChevronLeft,
+  ChevronRight,
   X
 } from 'lucide-react';
 
@@ -47,7 +49,7 @@ interface Factory {
 }
 
 export default function RecipesPage() {
-  const { data: session, status } = useSession();
+  const { status } = useSession();
   const [recipes, setRecipes] = useState<Recipe[]>([]);
   const [factories, setFactories] = useState<Factory[]>([]);
   const [filteredRecipes, setFilteredRecipes] = useState<Recipe[]>([]);
@@ -56,6 +58,8 @@ export default function RecipesPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [showFilters, setShowFilters] = useState(false);
+  const [page, setPage] = useState(1);
+  const PAGE_SIZE = 48;
 
   // Get unique building types
   const buildingTypes = Array.from(
@@ -131,6 +135,7 @@ export default function RecipesPage() {
     }
 
     setFilteredRecipes(filtered);
+    setPage(1);
   }, [recipes, searchTerm, selectedBuilding]);
 
   // Format time display
@@ -153,6 +158,19 @@ export default function RecipesPage() {
   // Calculate items per minute
   const calculateItemsPerMinute = (amount: number, time: number) => {
     return ((amount / time) * 60).toFixed(1);
+  };
+
+  // Format a class name like "Desc_IronIngot_C" to "Iron Ingot"
+  const formatClassName = (className: string) => {
+    return className
+      .replace(/^Desc_/, '')
+      .replace(/_C$/, '')
+      .replace(/_/g, ' ');
+  };
+
+  // Get display name for ingredient/product, falling back to formatted className
+  const getItemDisplayName = (item: { name?: string; item: string }) => {
+    return item.name || formatClassName(item.item);
   };
 
   // Empty functions for sidebar
@@ -272,7 +290,8 @@ export default function RecipesPage() {
               {/* Results Count */}
               <div className="flex justify-between items-center mt-4 pt-4 border-t border-slate-700">
                 <p className="text-sm text-neutral-400">
-                  Showing {filteredRecipes.length} of {recipes.length} recipes
+                  Showing {Math.min((page - 1) * PAGE_SIZE + 1, filteredRecipes.length)}–{Math.min(page * PAGE_SIZE, filteredRecipes.length)} of {filteredRecipes.length} recipes
+                  {filteredRecipes.length !== recipes.length && ` (${recipes.length} total)`}
                 </p>
                 {(searchTerm || selectedBuilding) && (
                   <p className="text-sm text-orange-400">
@@ -303,8 +322,9 @@ export default function RecipesPage() {
 
             {/* Recipes Grid */}
             {!isLoading && !error && (
+              <>
               <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-                {filteredRecipes.map((recipe) => (
+                {filteredRecipes.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE).map((recipe) => (
                   <div
                     key={recipe._id}
                     className="bg-slate-900 border border-slate-700 rounded-lg p-6 hover:border-orange-500/50 transition-colors"
@@ -340,7 +360,7 @@ export default function RecipesPage() {
                           <div key={index} className="flex items-center gap-3 text-sm">                            <div className="w-8 h-8 bg-slate-800 rounded border border-slate-600 flex-shrink-0 overflow-hidden hover:border-orange-500/50 transition-colors">
                               <img
                                 src={ingredient.image || '/images/items/default.svg'}
-                                alt={ingredient.name || ingredient.item}
+                                alt={getItemDisplayName(ingredient)}
                                 className="w-full h-full object-cover hover:scale-110 transition-transform"
                                 onError={(e) => {
                                   const target = e.target as HTMLImageElement;
@@ -350,7 +370,7 @@ export default function RecipesPage() {
                             </div>
                             <div className="flex-1 flex justify-between items-center">
                               <span className="text-neutral-400">
-                                {ingredient.name || ingredient.item}
+                                {getItemDisplayName(ingredient)}
                               </span>
                               <span className="text-white">
                                 {ingredient.amount} ({calculateItemsPerMinute(ingredient.amount, recipe.time)}/min)
@@ -372,7 +392,7 @@ export default function RecipesPage() {
                           <div key={index} className="flex items-center gap-3 text-sm">                            <div className="w-8 h-8 bg-slate-800 rounded border border-slate-600 flex-shrink-0 overflow-hidden hover:border-orange-500/50 transition-colors">
                               <img
                                 src={product.image || '/images/items/default.svg'}
-                                alt={product.name || product.item}
+                                alt={getItemDisplayName(product)}
                                 className="w-full h-full object-cover hover:scale-110 transition-transform"
                                 onError={(e) => {
                                   const target = e.target as HTMLImageElement;
@@ -382,7 +402,7 @@ export default function RecipesPage() {
                             </div>
                             <div className="flex-1 flex justify-between items-center">
                               <span className="text-neutral-400">
-                                {product.name || product.item}
+                                {getItemDisplayName(product)}
                               </span>
                               <span className="text-orange-400 font-medium">
                                 {product.amount} ({calculateItemsPerMinute(product.amount, recipe.time)}/min)
@@ -395,6 +415,36 @@ export default function RecipesPage() {
                   </div>
                 ))}
               </div>
+
+              {/* Pagination Controls */}
+              {filteredRecipes.length > PAGE_SIZE && (
+                <div className="flex items-center justify-center gap-4 mt-6">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setPage(p => Math.max(1, p - 1))}
+                    disabled={page === 1}
+                    className="border-slate-600 text-slate-300 hover:bg-slate-700"
+                  >
+                    <ChevronLeft className="w-4 h-4 mr-1" />
+                    Previous
+                  </Button>
+                  <span className="text-sm text-neutral-400">
+                    Page {page} of {Math.ceil(filteredRecipes.length / PAGE_SIZE)}
+                  </span>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setPage(p => Math.min(Math.ceil(filteredRecipes.length / PAGE_SIZE), p + 1))}
+                    disabled={page >= Math.ceil(filteredRecipes.length / PAGE_SIZE)}
+                    className="border-slate-600 text-slate-300 hover:bg-slate-700"
+                  >
+                    Next
+                    <ChevronRight className="w-4 h-4 ml-1" />
+                  </Button>
+                </div>
+              )}
+              </>
             )}
 
             {/* No Results */}

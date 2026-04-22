@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getServerSession } from "next-auth/next";
-import { authOptions } from "@/app/api/auth/[...nextauth]/route";
+import { authOptions } from "@/lib/auth";
 import { dbConnect } from '@/lib/mongodb';
 import ProductionLine from '@/lib/models/ProductionLine';
 import { Factory } from '@/lib/models/Factory';
@@ -78,7 +78,7 @@ export async function GET(request: NextRequest) {
     const userFactories = await Factory.find({ userId: session.user?.id }).select('_id');
     const userFactoryIds = userFactories.map(f => f._id);
     
-    let query: any = {
+    const query: any = {
       factoryId: { $in: userFactoryIds }
     };
     

@@ -1,0 +1,138 @@
+# CI — Lint, Build, Unit Tests, E2E Tests
+# Runs on every pull request targeting any branch.
+#
+# Required Secrets (for E2E job only):
+#   None required for open PRs — E2E runs against a locally built app.
+#   If you add authenticated E2E flows in future, add:
+#     E2E_TEST_EMAIL     — test user email address
+#     E2E_TEST_PASSWORD  — test user password
+
+name: CI
+
+on:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  # ── Job 1: Lint & Build ──────────────────────────────────────────────────────
+  lint-and-build:
+    name: Lint & Build
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Build
+        run: npm run build
+        env:
+          MONGODB_URI: mongodb://localhost:27017/ci
+          NEXTAUTH_URL: http://localhost:3000
+          NEXTAUTH_SECRET: ci-secret-placeholder
+          GOOGLE_CLIENT_ID: placeholder
+          GOOGLE_CLIENT_SECRET: placeholder
+          RESEND_API_KEY: re_placeholder
+          RESEND_FROM_EMAIL: noreply@example.com
+
+  # ── Job 2: Unit & Component Tests (Vitest) ───────────────────────────────────
+  unit-tests:
+    name: Unit & Component Tests
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run Vitest
+        run: npm test
+        env:
+          CI: true
+
+      - name: Upload coverage report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: vitest-coverage
+          path: coverage/
+          retention-days: 7
+
+  # ── Job 3: E2E Tests (Playwright) ────────────────────────────────────────────
+  e2e-tests:
+    name: E2E Tests (Playwright)
+    runs-on: ubuntu-latest
+    needs: lint-and-build       # Only run if the build passes
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Install Playwright Chromium
+        run: npx playwright install chromium --with-deps
+
+      - name: Build app
+        run: npm run build
+        env:
+          MONGODB_URI: mongodb://localhost:27017/ci
+          NEXTAUTH_URL: http://localhost:3000
+          NEXTAUTH_SECRET: ci-secret-placeholder
+          GOOGLE_CLIENT_ID: placeholder
+          GOOGLE_CLIENT_SECRET: placeholder
+          RESEND_API_KEY: re_placeholder
+          RESEND_FROM_EMAIL: noreply@example.com
+
+      - name: Start app and run E2E tests
+        run: |
+          npm run start &
+          npx wait-on http://localhost:3000 --timeout 60000
+          npm run test:e2e
+        env:
+          MONGODB_URI: mongodb://localhost:27017/ci
+          NEXTAUTH_URL: http://localhost:3000
+          NEXTAUTH_SECRET: ci-secret-placeholder
+          GOOGLE_CLIENT_ID: placeholder
+          GOOGLE_CLIENT_SECRET: placeholder
+          RESEND_API_KEY: re_placeholder
+          RESEND_FROM_EMAIL: noreply@example.com
+          CI: true
+          PLAYWRIGHT_BASE_URL: http://localhost:3000
+
+      - name: Upload Playwright report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report
+          path: playwright-report/
+          retention-days: 7
+

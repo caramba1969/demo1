@@ -1,5 +1,4 @@
 import type { Metadata } from "next";
-import { Providers } from "../providers";
 
 export const metadata: Metadata = {
   title: "Sign In - Satisfactory Factories",

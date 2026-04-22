@@ -1,0 +1,15 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(npm run:*)",
+      "Bash(npx tsc:*)",
+      "Bash(grep -r \"itemName\\\\|itemClassName\" /c/Users/RemcovanBeek/Documents/GitHub/demo1/src/app/api/factories/[id]/imports -n)",
+      "Read(//c/Users/RemcovanBeek/.claude/plugins/cache/claude-plugins-official/superpowers/5.0.6/skills/brainstorming/**)",
+      "Bash(C:UsersRemcovanBeek.claudepluginscacheclaude-plugins-officialsuperpowers5.0.6scriptsstart-server.sh --project-dir \"c:\\\\Users\\\\RemcovanBeek\\\\Documents\\\\GitHub\\\\demo1\")",
+      "Bash(OUTPUT_FILE=\"C:/Users/RemcovanBeek/AppData/Local/Temp/claude/c--Users-RemcovanBeek-Documents-GitHub-demo1/f0f8e974-ef74-4dcf-9ee8-b060725dd96e/tasks/b0oi1yia8.output\")",
+      "Read(//c/Users/RemcovanBeek/Documents/GitHub/demo1/**)",
+      "Read(//c/Users/RemcovanBeek/.claude/plugins/cache/claude-plugins-official/superpowers/5.0.6/**)",
+      "Bash(curl -s http://localhost:3000 -o /dev/null -w \"%{http_code}\")"
+    ]
+  }
+}

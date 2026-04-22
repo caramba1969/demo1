@@ -35,7 +35,7 @@ export async function GET(request: NextRequest) {
     const alternate = searchParams.get('alternate');
     const inMachine = searchParams.get('inMachine');
     
-    let query: any = {};
+    const query: any = {};
     
     // Text search
     if (search) {
